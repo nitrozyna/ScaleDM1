@@ -1,4 +1,4 @@
-ScaleDM1: Automated Huntington dystrophy type1 genotyping
+ScaleDM1: Automated Myotonic dystrophy type1 genotyping
 =========================================================
 ScaleDM1 is a package for automating the process of genotyping microsatellite repeats in Myotonic Dystrophy type 1 data.
 We utilise machine learning approaches to take into account natural data 'artefacts', such as PCR slippage and somatic
