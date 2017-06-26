@@ -1,11 +1,11 @@
-ScaleHD: Automated Huntington Disease genotyping
+ScaleDM1: Automated Huntington dystrophy type1 genotyping
 =========================================================
-ScaleHD is a package for automating the process of genotyping microsatellite repeats in Huntington Disease data.
+ScaleDM1 is a package for automating the process of genotyping microsatellite repeats in Myotonic Dystrophy type 1 data.
 We utilise machine learning approaches to take into account natural data 'artefacts', such as PCR slippage and somatic
 mosaicism, when processing data. This provides the end-user with a simple to use platform which can robustly predict genotypes from input data.
 
 By default, input is an aligned .sam file (either through stdin, or user specified files/directories); only genotyping is carried out.
-However, if you wish to use ScaleHD as a pipeline for unaligned reads, providing the software with a configuration XML file will allow for
+However, if you wish to use ScaleDM1 as a pipeline for unaligned reads, providing the software with a configuration XML file will allow for
 quality control (trimming, demultiplexing) of raw reads, alignment, and then genotyping.
 
 The general overview of the application (assuming use of all stages) is as follows:
@@ -35,7 +35,7 @@ Installation Prerequisites
 ==========================
 If you do not have sudo access (to install requisite packages), you should run ScaleHD in a user-bound local python environment,
  or discrete installation. This guide will assume you have sudo access. However, we detail an extra stage on setting up a local
- python environment for use with ScaleHD.
+ python environment for use with ScaleDM1.
 
 0. (Optional 1 - no sudo) Python 2.7 Setup
     ~~~~
@@ -66,14 +66,14 @@ If you do not have sudo access (to install requisite packages), you should run S
     $ pip install numpy
     ~~~~
 
-3. Install ScaleHD from src (pip coming soon...)
+3. Install ScaleDM1 from src (pip coming soon...)
     ~~~~
     $ cd ~/path/to/ScaleHD/src/
     $ python setup.py install
     ~~~~
 
 4. Install required third-party binaries. Please make sure any binaries you do install are included on your $PATH so that they can be found by your system. 
-**Please note**, ScaleHD will utilise GNU TYPE to determine if a command is on your $PATH. If either TYPE or a dependency is missing, ScaleHD will inform you and exit.
+**Please note**, ScaleDM1 will utilise GNU TYPE to determine if a command is on your $PATH. If either TYPE or a dependency is missing, ScaleDM1 will inform you and exit.
     ~~~~
     Quality Control:
         Cutadapt
@@ -93,11 +93,11 @@ Usage
 =====
 General usage is as follows:
 
-    $ scalehd [-h/--help] [-v] [-c CONFIG] [-t THREADS] [-p] [-g] [-s FLOAT] [-b] [-j "jobname"] [-o OUTPUT]
+    $ scaledm1 [-h/--help] [-v] [-c CONFIG] [-t THREADS] [-p] [-g] [-s FLOAT] [-b] [-j "jobname"] [-o OUTPUT]
     e.g.
-    $ scalehd -v -c ~/path/to/config.xml -t 12 -p -s 0.5 -j "ExampleJobPrefix" -o ~/path/to/master/output
+    $ scaledm1 -v -c ~/path/to/config.xml -t 12 -p -s 0.5 -j "ExampleJobPrefix" -o ~/path/to/master/output
 
-ScaleHD flags are:
+ScaleDM1 flags are:
 
     -h/--help:: Simple help message explaining flags in detail
     -v/--verbose:: Enables verbose mode in the terminal (i.e. shows user feedback)
