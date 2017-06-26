@@ -44,11 +44,11 @@ THREADS = cpu_count()
 class ScaleHD:
 	def __init__(self):
 		"""
-		ScaleHD: Automated triplet repeat genotyping for Huntington Disease
+		ScaleDM1: Automated triplet repeat genotyping for Myotonic Dystrophy type1
 		ScaleHD has two modes of usage; sequence and batch
 		Sequence mode consists of a pipeline behaviour for genome sequence QC, alignment and genotyping
 		Batch mode consists of a linear behaviour only for genotyping (from pre-aligned files)
-		If you want a full explanation of the ways in which ScaleHD can be run; scalehd --help
+		If you want a full explanation of the ways in which ScaleDM1 can be run; scaledm1 --help
 		"""
 
 		##
@@ -61,7 +61,7 @@ class ScaleHD:
 
 		##
 		## Argument parser from CLI
-		self.parser = argparse.ArgumentParser(prog='scalehd', description='ScaleHD: Automated DNA micro-satellite genotyping.')
+		self.parser = argparse.ArgumentParser(prog='scaledm1', description='ScaleDM1: Automated DNA micro-satellite genotyping.')
 		self.parser.add_argument('-v', '--verbose', help='Verbose output mode. Setting this flag enables verbose output. Default: off.', action='store_true')
 		self.parser.add_argument('-c', '--config', help='Pipeline config. Specify a directory to your ArgumentConfig.xml file.', nargs=1, required=True)
 		self.parser.add_argument('-t', '--threads', help='Thread utilisation. Typically only alters third party alignment performance. Default: system max.', type=int, choices=xrange(1, THREADS+1), default=THREADS)
@@ -78,20 +78,20 @@ class ScaleHD:
 		## Set verbosity for CLI output
 		if self.args.verbose:
 			log.basicConfig(format='%(message)s', level=log.DEBUG)
-			log.info('{}{}{}{}'.format(clr.bold, 'shd__ ', clr.end, 'ScaleHD: Automated DNA micro-satellite genotyping.'))
-			log.info('{}{}{}{}'.format(clr.bold, 'shd__ ', clr.end, 'alastair.maxwell@glasgow.ac.uk\n'))
+			log.info('{}{}{}{}'.format(clr.bold, 'sdm1__ ', clr.end, 'ScaleHD: Automated DNA micro-satellite genotyping.'))
+			log.info('{}{}{}{}'.format(clr.bold, 'sdm1__ ', clr.end, 'alastair.maxwell@glasgow.ac.uk\n'))
 		else:
 			log.basicConfig(format='%(message)s')
 
 		##
 		## Check inputs, generate outputs
 		if sanitise_inputs(self.args):
-			log.error('{}{}{}{}'.format(clr.red, 'shd__ ', clr.end, 'Error with specified input(s) configuration. Exiting.'))
+			log.error('{}{}{}{}'.format(clr.red, 'sdm1__ ', clr.end, 'Error with specified input(s) configuration. Exiting.'))
 			sys.exit(2)
 		try:
 			self.instance_rundir = sanitise_outputs(self.args.jobname, self.args.output)
 		except Exception, e:
-			log.error('{}{}{}{}'.format(clr.red, 'shd__ ', clr.end, e))
+			log.error('{}{}{}{}'.format(clr.red, 'sdm1__ ', clr.end, e))
 			sys.exit(2)
 		self.purge_flag = self.args.purgesam
 		self.subsample_flag = self.args.subsample
@@ -108,10 +108,10 @@ class ScaleHD:
 		##
 		## Check libraries for stages specified in config
 		if initialise_libraries(self.instance_params):
-			log.error('{}{}{}{}'.format(clr.red, 'shd__ ', clr.end, 'Detected missing library from system/$PATH. Exiting.'))
+			log.error('{}{}{}{}'.format(clr.red, 'sdm1__ ', clr.end, 'Detected missing library from system/$PATH. Exiting.'))
 			sys.exit(2)
 		else:
-			log.info('{}{}{}{}'.format(clr.green, 'shd__ ', clr.end, 'Required libraries present, assuming OK!\n'))
+			log.info('{}{}{}{}'.format(clr.green, 'sdm1__ ', clr.end, 'Required libraries present, assuming OK!\n'))
 
 		##
 		## Set-up instance wide applicable files
@@ -129,7 +129,7 @@ class ScaleHD:
 		## A simple report file is appended after each sample pair, currently..
 		## In the future, replace with HTML based web-app, generated here?
 		## For now, just exit
-		log.info('{}{}{}{}'.format(clr.green, 'shd__ ', clr.end, 'ScaleHD pipeline completed; exiting.'))
+		log.info('{}{}{}{}'.format(clr.green, 'sdm1__ ', clr.end, 'ScaleHD pipeline completed; exiting.'))
 
 	def instance_data(self):
 
@@ -137,7 +137,7 @@ class ScaleHD:
 		## Reference indexes
 		if self.args.config:
 			if self.instance_params.config_dict['instance_flags']['@sequence_alignment']:
-				log.info('{}{}{}{}'.format(clr.bold,'shd__ ',clr.end,'Indexing reference(s) before initialising sample pair cycle..'))
+				log.info('{}{}{}{}'.format(clr.bold,'sdm1__ ',clr.end,'Indexing reference(s) before initialising sample pair cycle..'))
 				self.index_path = os.path.join(self.instance_rundir,'Indexes'); mkdir_p(self.index_path)
 				forward_reference = self.instance_params.config_dict['@forward_reference']
 				reverse_reference = self.instance_params.config_dict['@reverse_reference']
@@ -175,7 +175,7 @@ class ScaleHD:
 		date_string = dt.datetime.today().strftime("%d/%m/%Y")
 		self.instance_graphs = os.path.join(self.instance_rundir, 'InstanceGraphs.pdf')
 		c = canvas.Canvas(self.instance_graphs, pagesize=(500,250))
-		first_string = 'ScaleHD: Automated Huntington Disease Genotyping'
+		first_string = 'ScaleDM1: Automated Myotonic Dystrophy Genotyping'
 		second_string = 'University of Glasgow: alastair.maxwell@glasgow.ac.uk'
 		third_string = '{}{}'.format('Job Name: ', job_string)
 		fourth_string = '{}{}'.format('Run Date: ', date_string)
@@ -187,7 +187,7 @@ class ScaleHD:
 
 	def sequence_workflow(self):
 		"""
-		Workflow for when ScaleHD is being ran in config mode..
+		Workflow for when ScaleDM1 is being ran in config mode..
 		Behaviours are tailored based on information extracted from the specified config XML file
 		General overview:
 		-- If align; index references beforehand (instead of each time we call __alignment)
@@ -208,7 +208,7 @@ class ScaleHD:
 		##
 		## Pre-stage: check for compressed data, extract
 		if not extract_data(instance_inputdata):
-			log.error('{}{}{}{}'.format(clr.red, 'shd__ ', clr.end, 'Error during file extraction. Please check data!'))
+			log.error('{}{}{}{}'.format(clr.red, 'sdm1__ ', clr.end, 'Error during file extraction. Please check data!'))
 
 		##
 		## Executing the workflow for this SHD instance
@@ -220,7 +220,7 @@ class ScaleHD:
 				################################################
 				## Pre stage! Sample object/Tree generation.. ##
 				################################################
-				log.info('{}{}{}{}{}/{} ({})'.format(clr.bold, 'shd__ ', clr.end, 'Processing sequence pair: ',
+				log.info('{}{}{}{}{}/{} ({})'.format(clr.bold, 'sdm1__ ', clr.end, 'Processing sequence pair: ',
 													 str(i + 1), str(len(data_pairs)), seqpair_lbl))
 				current_seqpair = SequenceSample()
 				current_seqpair.set_label(seqpair_lbl)
@@ -246,7 +246,7 @@ class ScaleHD:
 					self.quality_control(current_seqpair)
 				except Exception, e:
 					self.append_report(current_seqpair)
-					log.info('{}{}{}{}{}: {}\n'.format(clr.red,'shd__ ',clr.end,'SeqQC failure on ',seqpair_lbl,str(e)))
+					log.info('{}{}{}{}{}: {}\n'.format(clr.red,'sdm1__ ',clr.end,'SeqQC failure on ',seqpair_lbl,str(e)))
 					continue
 
 				##############################################
@@ -256,7 +256,7 @@ class ScaleHD:
 					self.sequence_alignment(current_seqpair)
 				except Exception, e:
 					self.append_report(current_seqpair)
-					log.info('{}{}{}{}{}: {}\n'.format(clr.red,'shd__ ',clr.end,'Alignment failure on ',seqpair_lbl,str(e)))
+					log.info('{}{}{}{}{}: {}\n'.format(clr.red,'sdm1__ ',clr.end,'Alignment failure on ',seqpair_lbl,str(e)))
 					continue
 
 				###############################################
@@ -266,7 +266,7 @@ class ScaleHD:
 					self.atypical_scanning(current_seqpair)
 				except Exception, e:
 					self.append_report(current_seqpair)
-					log.info('{}{}{}{}{}: {}\n'.format(clr.red, 'shd__ ', clr.end, 'Atypical scanning failure on ', seqpair_lbl, str(e)))
+					log.info('{}{}{}{}{}: {}\n'.format(clr.red, 'sdm1__ ', clr.end, 'Atypical scanning failure on ', seqpair_lbl, str(e)))
 					continue
 
 				##########################################
@@ -281,10 +281,10 @@ class ScaleHD:
 								self.sequence_realignment(current_seqpair, allele)
 							except Exception, e:
 								self.append_report(current_seqpair)
-								log.info('{}{}{}{}{}: {}'.format(clr.red,'shd__ ',clr.end,'Realignment failure on ',seqpair_lbl,str(e)))
+								log.info('{}{}{}{}{}: {}'.format(clr.red,'sdm1__ ',clr.end,'Realignment failure on ',seqpair_lbl,str(e)))
 								continue
 						else:
-							log.info('{}{}{}{}'.format(clr.yellow,'shd__ ',clr.end,'Atypical realignment not selected. Brute-force genotyping on inaccurate data.'))
+							log.info('{}{}{}{}'.format(clr.yellow,'sdm1__ ',clr.end,'Atypical realignment not selected. Brute-force genotyping on inaccurate data.'))
 							invalid_data = True
 							allele.set_fwdist(current_seqpair.get_fwdist())
 							allele.set_rvdist(current_seqpair.get_rvdist())
@@ -308,7 +308,7 @@ class ScaleHD:
 					self.allele_genotyping(current_seqpair, invalid_data)
 				except Exception, e:
 					self.append_report(current_seqpair)
-					log.info('{}{}{}{}{}: {}\n'.format(clr.red, 'shd__ ', clr.end, 'Genotyping failure on ',seqpair_lbl, str(e)))
+					log.info('{}{}{}{}{}: {}\n'.format(clr.red, 'sdm1__ ', clr.end, 'Genotyping failure on ',seqpair_lbl, str(e)))
 					continue
 
 				#######################################
@@ -329,46 +329,46 @@ class ScaleHD:
 					self.append_report(current_seqpair)
 				except Exception, e:
 					self.append_report(current_seqpair)
-					log.info('{}{}{}{}{}: {}'.format(clr.red, 'shd__ ', clr.end, 'Report/Graphing failure on ', seqpair_lbl, str(e)))
+					log.info('{}{}{}{}{}: {}'.format(clr.red, 'sdm1__ ', clr.end, 'Report/Graphing failure on ', seqpair_lbl, str(e)))
 				gc.collect()
-				log.info('{}{}{}{}'.format(clr.green,'shd__ ',clr.end,'Sequence pair workflow complete!\n'))
+				log.info('{}{}{}{}'.format(clr.green,'sdm1__ ',clr.end,'Sequence pair workflow complete!\n'))
 
 	def quality_control(self, sequencepair_object):
 
 		seq_qc_flag = self.instance_params.config_dict['instance_flags']['@quality_control']
 		if seq_qc_flag == 'True':
-			log.info('{}{}{}{}'.format(clr.yellow,'shd__ ',clr.end,'Executing sequence quality control workflow..'))
+			log.info('{}{}{}{}'.format(clr.yellow,'sdm1__ ',clr.end,'Executing sequence quality control workflow..'))
 			if seq_qc.SeqQC(sequencepair_object, self.instance_params, 'validate'):
-				log.info('{}{}{}{}'.format(clr.bold,'shd__ ',clr.end,'Initialising trimming..'))
+				log.info('{}{}{}{}'.format(clr.bold,'sdm1__ ',clr.end,'Initialising trimming..'))
 				sequencepair_object.set_trimreport(seq_qc.SeqQC(sequencepair_object,self.instance_params,'trim').get_trimreport())
 				gc.collect()
-				log.info('{}{}{}{}'.format(clr.green,'shd__ ',clr.end,'Trimming complete!'))
+				log.info('{}{}{}{}'.format(clr.green,'sdm1__ ',clr.end,'Trimming complete!'))
 
 	def sequence_alignment(self, sequencepair_object):
 
 		alignment_flag = self.instance_params.config_dict['instance_flags']['@sequence_alignment']
 		if alignment_flag == 'True':
-			log.info('{}{}{}{}'.format(clr.yellow,'shd__ ',clr.end,'Executing alignment workflow..'))
+			log.info('{}{}{}{}'.format(clr.yellow,'sdm1__ ',clr.end,'Executing alignment workflow..'))
 			sequencepair_object.set_alignreport(align.SeqAlign(sequencepair_object, self.instance_params).get_alignreport())
 			gc.collect()
-			log.info('{}{}{}{}'.format(clr.green,'shd__ ',clr.end,'Sequence alignment workflow complete!'))
+			log.info('{}{}{}{}'.format(clr.green,'sdm1__ ',clr.end,'Sequence alignment workflow complete!'))
 
 	def atypical_scanning(self, sequencepair_object):
 
 		alignment_flag = self.instance_params.config_dict['instance_flags']['@sequence_alignment']
 		if alignment_flag == 'True':
-			log.info('{}{}{}{}'.format(clr.bold, 'shd__ ', clr.end, 'Scanning for atypical alleles..'))
+			log.info('{}{}{}{}'.format(clr.bold, 'sdm1__ ', clr.end, 'Scanning for atypical alleles..'))
 			sequencepair_object.set_atypicalreport(align.ScanAtypical(sequencepair_object, self.instance_params).get_atypicalreport())
 			atypical_count = sequencepair_object.get_atypicalcount()
 			if atypical_count != 0:
-				log.info('{}{}{}{}{}{}'.format(clr.yellow, 'shd__ ', clr.end, 'Scanning complete! ',str(sequencepair_object.get_atypicalcount()),' atypical allele(s) present.'))
+				log.info('{}{}{}{}{}{}'.format(clr.yellow, 'sdm1__ ', clr.end, 'Scanning complete! ',str(sequencepair_object.get_atypicalcount()),' atypical allele(s) present.'))
 			else:
-				log.info('{}{}{}{}'.format(clr.green, 'shd__ ', clr.end,'Scanning complete! No atypical alleles present.'))
+				log.info('{}{}{}{}'.format(clr.green, 'sdm1__ ', clr.end,'Scanning complete! No atypical alleles present.'))
 			gc.collect()
 
 	def sequence_realignment(self, sequencepair_object, individual_allele):
 
-		log.info('{}{}{}{}'.format(clr.yellow,'shd__ ',clr.end,'User specified sequence re-alignment. Generating custom reference..'))
+		log.info('{}{}{}{}'.format(clr.yellow,'sdm1__ ',clr.end,'User specified sequence re-alignment. Generating custom reference..'))
 
 		atypical_index_path = os.path.join(sequencepair_object.get_alignpath(), 'AtypicalIndexes')
 		if not os.path.exists(atypical_index_path):	mkdir_p(atypical_index_path)
@@ -385,20 +385,20 @@ class ScaleHD:
 		individual_allele.set_fwidx(fwidx)
 		individual_allele.set_rvidx(rvidx)
 
-		log.info('{}{}{}{}'.format(clr.yellow,'shd__ ',clr.end,'Re-aligning to custom reference..'))
+		log.info('{}{}{}{}'.format(clr.yellow,'sdm1__ ',clr.end,'Re-aligning to custom reference..'))
 		align.SeqAlign(sequencepair_object, self.instance_params, individual_allele)
 		gc.collect()
 
-		log.info('{}{}{}{}'.format(clr.green,'shd__ ',clr.end,'Allele re-alignment complete!'))
+		log.info('{}{}{}{}'.format(clr.green,'sdm1__ ',clr.end,'Allele re-alignment complete!'))
 
 	def allele_genotyping(self, sequencepair_object, invalid_data):
 
 		genotyping_flag = self.instance_params.config_dict['instance_flags']['@genotype_prediction']
 		if genotyping_flag == 'True':
-			log.info('{}{}{}{}'.format(clr.yellow,'shd__ ',clr.end,'Genotyping alleles.. '))
+			log.info('{}{}{}{}'.format(clr.yellow,'sdm1__ ',clr.end,'Genotyping alleles.. '))
 			sequencepair_object.set_genotypereport(predict.AlleleGenotyping(sequencepair_object, self.instance_params, self.training_data, atypical_logic=invalid_data).get_report())
 			gc.collect()
-			log.info('{}{}{}{}'.format(clr.green,'shd__ ',clr.end,'Genotyping workflow complete!'))
+			log.info('{}{}{}{}'.format(clr.green,'sdm1__ ',clr.end,'Genotyping workflow complete!'))
 
 	def bayesian_analyses(self, sequencepair_object):
 
@@ -464,8 +464,8 @@ class ScaleHD:
 				outfi.close()
 		except IOError:
 			from os.path import expanduser; home = expanduser("~")
-			log.error('{}{}{}{}'.format(clr.red, 'shd__ ', clr.end, 'InstanceReport.csv resource LOCKED. Open in excel?'))
-			log.info('{}{}{}{}{}'.format(clr.yellow, 'shd__ ', clr.end, 'Cannot write while locked. Writing to: ', home))
+			log.error('{}{}{}{}'.format(clr.red, 'sdm1__ ', clr.end, 'InstanceReport.csv resource LOCKED. Open in excel?'))
+			log.info('{}{}{}{}{}'.format(clr.yellow, 'sdm1__ ', clr.end, 'Cannot write while locked. Writing to: ', home))
 			with open(os.path.join(home, 'InstanceReport.csv'), 'w') as newoutfi:
 				newoutfi.write(self.header); newoutfi.close()
 			with open(os.path.join(home, 'InstanceReport.csv'), 'a') as newappfi:
@@ -473,7 +473,7 @@ class ScaleHD:
 
 def main():
 	try:
-		ScaleHD()
+		ScaleDM1()
 	except KeyboardInterrupt:
-		log.error('{}{}{}{}'.format(clr.red,'shd__ ',clr.end,'Fatal: Keyboard Interrupt detected. Exiting.'))
+		log.error('{}{}{}{}'.format(clr.red,'sdm1__ ',clr.end,'Fatal: Keyboard Interrupt detected. Exiting.'))
 		sys.exit(2)
