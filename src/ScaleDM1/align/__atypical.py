@@ -96,7 +96,7 @@ class ScanAtypical:
 			'Secondary Allele: ', secondary_object.get_reflabel(),
 			'Secondary Original: ', secondary_object.get_originalreference()))
 		report_file.close()
-
+# TODO take a look at the process assembly first
 	def process_assembly(self):
 		"""
 		Function which processes the input SAM for atypical scanning.
@@ -159,6 +159,8 @@ class ScanAtypical:
 			self.sequencepair_object.set_alignmentwarning(self.alignment_warning)
 
 	@staticmethod
+
+# TODO check for all possible rotations: CTG,GCT,TGC
 	def typical_rotation(input_string):
 
 		"""

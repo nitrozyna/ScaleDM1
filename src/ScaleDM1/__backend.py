@@ -185,10 +185,6 @@ class ConfigReader(object):
 		if not (alignment_flag == 'True' or alignment_flag == 'False'):
 			log.error('{}{}{}{}'.format(Colour.red, 'sdm1__ ', Colour.end, 'XML Config: Sequence Alignment flag is not set to True/False.'))
 			trigger = True
-		atypical_flag = self.config_dict['instance_flags']['@atypical_realignment']
-		if not (atypical_flag == 'True' or atypical_flag == 'False'):
-			log.error('{}{}{}{}'.format(Colour.red, 'sdm1__ ', Colour.end, 'XML Config: Atypical Realignment flag is not True/False.'))
-			trigger = True
 		genotype_flag = self.config_dict['instance_flags']['@genotype_prediction']
 		if not (genotype_flag == 'True' or genotype_flag == 'False'):
 			log.error('{}{}{}{}'.format(Colour.red, 'sdm1__ ', Colour.end, 'XML Config: Genotype Prediction control flag is not True/False.'))
@@ -692,7 +688,7 @@ def collate_peaks(predict_path, sample_prefix):
 	merge_object.close()
 	os.remove(os.path.join(predict_path, 'Header.pdf'))
 	return sample_merge
-
+# TODO get rid of atypical, look ovejoining atypical and typical references together
 def generate_atypical_xml(label, allele_object, index_path, direction):
 
 	"""
@@ -789,7 +785,7 @@ def sanitise_alignment_output(input_object, input_list, stage):
 			return ' '.join(cleanse_target)
 	else:
 		return '*'
-
+## recursive directory creation function
 def mkdir_p(path):
 	try: os.makedirs(path)
 	except OSError as exc:

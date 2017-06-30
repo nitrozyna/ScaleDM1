@@ -41,7 +41,7 @@ from . import predict
 ## Globals
 THREADS = cpu_count()
 
-class ScaleHD:
+class ScaleDM1:
 	def __init__(self):
 		"""
 		ScaleDM1: Automated triplet repeat genotyping for Myotonic Dystrophy type1
@@ -129,7 +129,7 @@ class ScaleHD:
 		## A simple report file is appended after each sample pair, currently..
 		## In the future, replace with HTML based web-app, generated here?
 		## For now, just exit
-		log.info('{}{}{}{}'.format(clr.green, 'sdm1__ ', clr.end, 'ScaleHD pipeline completed; exiting.'))
+		log.info('{}{}{}{}'.format(clr.green, 'sdm1__ ', clr.end, 'ScaleDM1 pipeline completed; exiting.'))
 
 	def instance_data(self):
 
