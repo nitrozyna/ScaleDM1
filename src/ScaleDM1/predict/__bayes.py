@@ -34,7 +34,7 @@ class BayesianLikelihood:
         Work in progress.. more details as they are determined
         :param bayesian_path: path to output folder for bayes results
         :param data_pair: fw/rv data files for this current sample
-        :param likely_matrix: likelihood heatmap for HD data
+        :param likely_matrix: likelihood heatmap for DM1 data
         :param raw_matrix: read count distributions
         """
 
@@ -59,8 +59,8 @@ class BayesianLikelihood:
         ## Check we have an internet connection (for R package install/CRAN)
         self.is_connected = True
         if not self.check_connection():
-            log.info('{}{}{}{}'.format(clr.yellow, 'shd__ ', clr.end, 'No internet connection!!'))
-            log.info('{}{}{}{}'.format(clr.yellow, 'shd__ ', clr.end, 'Hopefully you are not missing any R packages.'))
+            log.info('{}{}{}{}'.format(clr.yellow, 'sdm1__ ', clr.end, 'No internet connection!!'))
+            log.info('{}{}{}{}'.format(clr.yellow, 'sdm1__ ', clr.end, 'Hopefully you are not missing any R packages.'))
 
         ##
         ## Installed required R Package (if missing)

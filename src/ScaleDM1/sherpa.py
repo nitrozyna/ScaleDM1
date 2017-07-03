@@ -44,8 +44,7 @@ THREADS = cpu_count()
 class ScaleDM1:
 	def __init__(self):
 		"""
-		ScaleDM1: Automated triplet repeat genotyping for Myotonic Dystrophy type1
-		ScaleHD has two modes of usage; sequence and batch
+		ScaleDM1: Automated triplet repeat genotyping for Myotonic Dystrophy type 1. ScaleDM1 has two modes of usage; sequence and batch:
 		Sequence mode consists of a pipeline behaviour for genome sequence QC, alignment and genotyping
 		Batch mode consists of a linear behaviour only for genotyping (from pre-aligned files)
 		If you want a full explanation of the ways in which ScaleDM1 can be run; scaledm1 --help
@@ -78,7 +77,7 @@ class ScaleDM1:
 		## Set verbosity for CLI output
 		if self.args.verbose:
 			log.basicConfig(format='%(message)s', level=log.DEBUG)
-			log.info('{}{}{}{}'.format(clr.bold, 'sdm1__ ', clr.end, 'ScaleHD: Automated DNA micro-satellite genotyping.'))
+			log.info('{}{}{}{}'.format(clr.bold, 'sdm1__ ', clr.end, 'ScaleDM1: Automated DNA micro-satellite genotyping.'))
 			log.info('{}{}{}{}'.format(clr.bold, 'sdm1__ ', clr.end, 'alastair.maxwell@glasgow.ac.uk\n'))
 		else:
 			log.basicConfig(format='%(message)s')
@@ -211,7 +210,7 @@ class ScaleDM1:
 			log.error('{}{}{}{}'.format(clr.red, 'sdm1__ ', clr.end, 'Error during file extraction. Please check data!'))
 
 		##
-		## Executing the workflow for this SHD instance
+		## Executing the workflow for this SDM1 instance
 		## Ensure there are even amount of files for forward/reverse sequence pairings
 		data_pairs = sequence_pairings(instance_inputdata, self.instance_rundir, 'sequence')
 		for i in range(len(data_pairs)):
@@ -318,7 +317,7 @@ class ScaleDM1:
 				# 	self.bayesian_analyses(current_seqpair)
 				# except Exception, e:
 				# 	self.append_report(current_seqpair, "FAIL")
-				# 	log.info('{}{}{}{}{}: {}\n'.format(clr.red, 'shd__ ', clr.end, 'Bayesian failure on ', seqpair_lbl, str(e)))
+				# 	log.info('{}{}{}{}{}: {}\n'.format(clr.red, 'sdm1__ ', clr.end, 'Bayesian failure on ', seqpair_lbl, str(e)))
 				# 	continue
 
 				#############################

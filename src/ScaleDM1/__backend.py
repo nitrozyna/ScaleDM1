@@ -40,7 +40,7 @@ class Colour:
 	end = '\033[0m'
 
 
-class ScaleHDException:
+class ScaleDM1Exception:
 	def __init__(self):
 		pass
 
@@ -210,10 +210,15 @@ class ConfigReader(object):
 				log.error('{}{}{}{}'.format(Colour.red, 'sdm1__ ', Colour.end, 'XML Config: Specified trimming adapter not valid selection.'))
 				trigger = True
 			trim_adapter_base = ['A','G','C','T']
-			adapter_sequence = self.config_dict['trim_flags']['@adapter']
-			for charbase in adapter_sequence:
+			forward_adapter = self.config_dict['trim_flags']['@forward_adapter']
+			for charbase in forward_adapter:
 				if charbase not in trim_adapter_base:
-					log.error('{}{}{}{}'.format(Colour.red, 'sdm1__ ', Colour.end, 'XML Config: Invalid character detected in adapter sequence.'))
+					log.error('{}{}{}{}'.format(Colour.red, 'sdm1__ ', Colour.end, 'XML Config: Invalid character detected in FW adapter sequence.'))
+					trigger = True
+			reverse_adapter = self.config_dict['trim_flags']['@reverse_adapter']
+			for charbase in reverse_adapter:
+				if charbase not in trim_adapter_base:
+					log.error('{}{}{}{}'.format(Colour.red, 'sdm1__ ', Colour.end, 'XML Config: Invalid character detected in RV adapter sequence.'))
 					trigger = True
 			error_tolerance = self.config_dict['trim_flags']['@error_tolerance']
 			if not isinstance(float(error_tolerance), float):
@@ -222,6 +227,7 @@ class ConfigReader(object):
 			if not float(error_tolerance) in np.arange(0,1.1,0.01):
 				log.error('{}{}{}{}'.format(Colour.red, 'sdm1__ ', Colour.end, 'XML Config: Specified error tolerance is not 0.0 < x < 1.0.'))
 				trigger = True
+
 
 		##
 		## Alignment flag settings
@@ -509,7 +515,7 @@ def initialise_libraries(instance_params):
 		library_subprocess.wait()
 		if not library in library_directory[0]:
 			log.critical('{}{}{}{}{}'.format(Colour.red, 'sdm1__ ', Colour.end, 'Missing library: ', library, '. Not installed or not on $PATH'))
-			raise ScaleHDException
+			raise ScaleDM1Exception
 
 	##
 	## To determine which binaries to check for
@@ -526,27 +532,27 @@ def initialise_libraries(instance_params):
 
 	if quality_control == 'True':
 		try:which_func('java')
-		except ScaleHDException: trigger=True
+		except ScaleDM1Exception: trigger=True
 		try:which_func('fastqc')
-		except ScaleHDException: trigger=True
+		except ScaleDM1Exception: trigger=True
 		try:which_func('cutadapt')
-		except ScaleHDException: trigger=True
+		except ScaleDM1Exception: trigger=True
 	if alignment == 'True':
 		try:which_func('seqtk')
-		except ScaleHDException: trigger=True
+		except ScaleDM1Exception: trigger=True
 		try:which_func('bwa')
-		except ScaleHDException: trigger=True
+		except ScaleDM1Exception: trigger=True
 		try:which_func('samtools')
-		except ScaleHDException: trigger=True
+		except ScaleDM1Exception: trigger=True
 		try:which_func('generatr')
-		except ScaleHDException: trigger=True
+		except ScaleDM1Exception: trigger=True
 	if genotyping == 'True':
 		try:which_func('samtools')
-		except ScaleHDException: trigger=True
+		except ScaleDM1Exception: trigger=True
 		try:which_func('R')
-		except ScaleHDException: trigger=True
+		except ScaleDM1Exception: trigger=True
 		try:which_func('generatr')
-		except ScaleHDException: trigger=True
+		except ScaleDM1Exception: trigger=True
 
 	return trigger
 
@@ -591,7 +597,7 @@ def sanitise_outputs(jobname, output_argument):
 		if not os.path.exists(output_root):
 			log.info('{}{}{}{}'.format(Colour.bold, 'sdm1__ ', Colour.end, 'Creating output root... '))
 			mkdir_p(output_root)
-		run_dir = output_root + 'ScaleHDRun_' + today
+		run_dir = output_root + 'ScaleDM1Run_' + today
 		log.info('{}{}{}{}'.format(Colour.bold, 'sdm1__ ', Colour.end, 'Creating instance run directory.. '))
 		mkdir_p(run_dir)
 
