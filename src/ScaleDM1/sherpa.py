@@ -64,10 +64,9 @@ class ScaleDM1:
 		self.parser.add_argument('-v', '--verbose', help='Verbose output mode. Setting this flag enables verbose output. Default: off.', action='store_true')
 		self.parser.add_argument('-c', '--config', help='Pipeline config. Specify a directory to your ArgumentConfig.xml file.', nargs=1, required=True)
 		self.parser.add_argument('-t', '--threads', help='Thread utilisation. Typically only alters third party alignment performance. Default: system max.', type=int, choices=xrange(1, THREADS+1), default=THREADS)
-		self.parser.add_argument('-p', '--purgesam', help='Remove non-unique reads in sam files the application will work with.', action='store_true')
+		self.parser.add_argument('-e', '--enshirine', help ='Do not remove non-uniquely mapped reads from SAM files.', action='store_true')
+		self.parser.add_argument('-b', '--broadscope', help='Do not subsample fastq data in the case of high read_count.', action='store_true')
 		self.parser.add_argument('-g', '--groupsam', help='Outputs all sorted SAM files into one instance-wide output folder, rather than sample subfolders.', action='store_true')
-		self.parser.add_argument('-s', '--subsample', help='Subsample any given input FastQ sequence file before processing for alignment.', type=float, choices=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9])
-		self.parser.add_argument('-b', '--boost', help='Increase DSP scanning speed by sacrificing sample-wide precision.', action='store_true')
 		self.parser.add_argument('-j', '--jobname', help='Customised folder output name. If not specified, defaults to normal output naming schema.', type=str)
 		self.parser.add_argument('-o', '--output', help='Output path. Specify a directory you wish output to be directed towards.', metavar='output', nargs=1, required=True)
 		self.args = self.parser.parse_args()
@@ -92,10 +91,9 @@ class ScaleDM1:
 		except Exception, e:
 			log.error('{}{}{}{}'.format(clr.red, 'sdm1__ ', clr.end, e))
 			sys.exit(2)
-		self.purge_flag = self.args.purgesam
-		self.subsample_flag = self.args.subsample
-		self.boost_flag = self.args.boost
+		self.enshirine_assembly = self.args.enshirine
 		self.group_flag = self.args.groupsam
+		self.broad_flag = self.args.broadscope
 		self.instance_summary = {}; self.instance_graphs = ''
 
 		##
@@ -228,10 +226,9 @@ class ScaleDM1:
 				current_seqpair.set_alignpath(seqpair_dat[4])
 				current_seqpair.set_predictpath(seqpair_dat[5])
 				current_seqpair.set_bayespath(seqpair_dat[6])
-				current_seqpair.set_purgeflag(self.purge_flag)
-				current_seqpair.set_boostflag(self.boost_flag)
+				current_seqpair.set_enshrineflag(self.enshirine_assembly)
+				current_seqpair.set_broadflag(self.broad_flag)
 				current_seqpair.set_groupflag(self.group_flag)
-				current_seqpair.set_subsampleflag(self.subsample_flag)
 				current_seqpair.set_fwidx(self.reference_indexes[0])
 				current_seqpair.set_rvidx(self.reference_indexes[1])
 				current_seqpair.set_fwreads(seqpair_dat[0])

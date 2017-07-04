@@ -37,6 +37,7 @@ class ScanAtypical:
 		self.sequence_path = sequencepair_object.get_alignpath()
 		self.sorted_assembly = sequencepair_object.get_fwassembly()
 		self.instance_params = instance_params
+		self.subsample_flag = sequencepair_object.get_subsampleflag()
 		self.subsample_assembly = None
 		self.subsample_index = None
 		self.assembly_object = None
@@ -96,12 +97,11 @@ class ScanAtypical:
 			'Secondary Allele: ', secondary_object.get_reflabel(),
 			'Secondary Original: ', secondary_object.get_originalreference()))
 		report_file.close()
-# TODO take a look at the process assembly first
+
 	def process_assembly(self):
 		"""
 		Function which processes the input SAM for atypical scanning.
 		Determine the number of total reads present (for subsampling).
-		If the user specified to use --boost, or there are more than 20k reads present, we subsample.
 		Read file into PySAM object.. process further
 		:return: None
 		"""
@@ -116,12 +116,12 @@ class ScanAtypical:
 		if awk_output > 20000: subsample_float = 0.25
 		elif 20000 > awk_output > 10000: subsample_float = 0.2
 		else: subsample_float = 0.15
-		self.sequencepair_object.set_totalseqreads(awk_output)
+		self.sequencepair_object.set_subsampled_fqcount(awk_output)
 
 		##
 		## Subsample reads
 		## Index the subsampled assembly
-		if self.sequencepair_object.get_boostflag() or awk_output > 30000:
+		if not self.sequencepair_object.get_broadflag():
 			self.sequencepair_object.set_subsampleflag(subsample_float)
 			self.sequencepair_object.set_automatic_DSPsubsample(True)
 			self.subsample_assembly = os.path.join(self.sequence_path,'subsample.sam')
@@ -159,8 +159,6 @@ class ScanAtypical:
 			self.sequencepair_object.set_alignmentwarning(self.alignment_warning)
 
 	@staticmethod
-
-# TODO check for all possible rotations: CTG,GCT,TGC
 	def typical_rotation(input_string):
 
 		"""
@@ -202,39 +200,21 @@ class ScanAtypical:
 		##
 		## Iterate over top 3 aligned references in this assembly
 		## Fetch the reads aligned to the current reference
-		inv_killswitch = 0
 		for investigation in self.assembly_targets:
-			reference_data = self.assembly_object.fetch(reference=investigation[0])
 
 			##
 			## Counts of atypical/typical reads
-			typical_count = 0; atypical_count = 0; reference_atypicals = []; fp_flanks = []; tp_flanks = []
+			typical_count = 0; atypical_count = 0; intervening_population = []; fp_flanks = []; tp_flanks = []
 			ref_cag = []; ref_ccg = []; ref_cct = []
 
-			##
-			## Temporary workaround to DSP taking too long (0.01s per read is bad)
-			## If readcount is x, subsample is y. Iterate into randomised subsample list of x(y)
-			## Do not execute if user has boosted.
-			read_count = len([x for x in self.assembly_object.fetch(reference=investigation[0])]); samplesize = None
-			if read_count > 3000: samplesize = 1000
-			elif 1000 < read_count < 3000: samplesize = 1500
-			if 0 < read_count < 1000: samplesize = 1000
-			if not self.sequencepair_object.get_boostflag() and not self.alignment_warning:
-				subsampled_reads = [x for _, x in nlargest(samplesize, ((random.random(), x) for x in reference_data))]
-			else:
-				subsampled_reads = self.assembly_object.fetch(reference=investigation[0])
-
-			inv_killswitch += 1
-			if inv_killswitch > 1 and read_count < 100:
-				self.sequencepair_object.set_fatalreadallele(True)
-			elif inv_killswitch == 1 and read_count < 100:
+			if investigation[1] < 100:
 				self.sequencepair_object.set_fatalreadallele(True)
 				raise Exception('<100 aligned reads. Data un-usable.')
 
 			##
 			## For every read in this reference, get the aligned sequence
 			## Split into triplet sliding window list, remove any triplets that are < 3
-			for read in subsampled_reads:
+			for read in self.assembly_object.fetch(reference=investigation[0]):
 				target_sequence = read.query_alignment_sequence
 				sequence_windows = [target_sequence[i:i + 3] for i in range(0, len(target_sequence), 3)]
 				sequence_windows = [x for x in sequence_windows if len(x)==3]
@@ -298,9 +278,9 @@ class ScanAtypical:
 					intervene_string = 'CAACAGCCGCCA'
 				if intervene_string != 'CAACAGCCGCCA':
 					atypical_count += 1
-					reference_atypicals.append(intervene_string)
 				else:
 					typical_count += 1
+				intervening_population.append(intervene_string)
 
 			##
 			## Calculate the presence of each 'state' of reference
@@ -309,14 +289,20 @@ class ScanAtypical:
 			est_cag = Counter(ref_cag).most_common()[0][0]
 			est_ccg = Counter(ref_ccg).most_common()[0][0]
 			est_cct = Counter(ref_cct).most_common()[0][0]
+			## cct fuckery
+			cct_test = Counter(ref_cct).most_common()
+			cct_diff = float(cct_test[0][1])/float(cct_test[1][1])
+			if np.isclose([cct_diff], [2.0], atol=0.3):
+				est_cct = 2
+				self.sequencepair_object.set_cctuncertainty(True)
 
 			##
 			## Determine most frequent intervening sequence
-			atypical_population = Counter(reference_atypicals).most_common()
+			common_intervening = Counter(intervening_population).most_common()
 			fp_flank_population = Counter(fp_flanks).most_common()
 			tp_flank_population = Counter(tp_flanks).most_common()
 			single_counter = 0
-			if len(atypical_population) == 0: atypical_population = [['CAACAGCCGCCA']]
+			if len(common_intervening) == 0: common_intervening = [['CAACAGCCGCCA']]
 			reference_dictionary = {'TotalReads':investigation[1],
 									'TypicalCount': typical_count,
 									'TypicalPcnt': ref_typical,
@@ -328,7 +314,7 @@ class ScanAtypical:
 									'EstimatedCAG': est_cag,
 									'EstimatedCCG': est_ccg,
 									'EstimatedCCT': est_cct,
-									'InterveningSequence': atypical_population[0][0]}
+									'InterveningSequence': common_intervening[0][0]}
 
 			if atypical_count > typical_count:
 				self.atypical_count += 1
@@ -343,41 +329,41 @@ class ScanAtypical:
 			##
 			## If the intervening is longer in #2, assume poor sequencing in #1 and use #2
 			try:
-				if len(atypical_population[0][0]) < len(atypical_population[1][0]):
+				if len(common_intervening[0][0]) < len(common_intervening[1][0]):
 					if reference_dictionary['Status'] == 'Typical':
-						reference_dictionary['InterveningSequence'] = max([atypical_population[0][0],atypical_population[1][0]], key=len)
+						reference_dictionary['InterveningSequence'] = max([common_intervening[0][0],common_intervening[1][0]], key=len)
 			except IndexError:
-				reference_dictionary['InterveningSequence'] = atypical_population[0][0]
+				reference_dictionary['InterveningSequence'] = common_intervening[0][0]
 
 			##
 			## Check for mismatch just before intervening sequence
 			try:
-				top_hit = atypical_population[0][1]; second_hit = atypical_population[1][1]
+				top_hit = common_intervening[0][1]; second_hit = common_intervening[1][1]
 				diff = ((top_hit-second_hit)/top_hit)*100
 				if diff < 30.00:
-					if len(atypical_population[0][0]) == 15:
-						if np.isclose(self.similar('CAG', atypical_population[0][0][0:3]), [0.66], atol=0.1):
+					if len(common_intervening[0][0]) == 15:
+						if np.isclose(self.similar('CAG', common_intervening[0][0][0:3]), [0.66], atol=0.1):
 							reference_dictionary['InterveningSequence'] = 'CAACAGCCGCCA'
 			except IndexError:
 				pass
 
 			##
 			## If all scanned items are only counted once
-			for item in atypical_population:
+			for item in common_intervening:
 				try:
 					if item[1] == 1: single_counter += 1
 				except IndexError:
 					if ref_typical > ref_atypical:
 						reference_dictionary['Status'] = 'Typical'
 						reference_dictionary['InterveningSequence'] = 'CAACAGCCGCCA'
-			if single_counter == len(atypical_population) and reference_dictionary['Status'] == 'Typical':
+			if single_counter == len(common_intervening) and reference_dictionary['Status'] == 'Typical':
 				reference_dictionary['InterveningSequence'] = 'CAACAGCCGCCA'
 
 			##
 			## Append results to reference label
 			self.atypical_info[investigation[0]] = reference_dictionary
 
-		if self.sequencepair_object.get_boostflag() or self.sequencepair_object.get_subsampleflag() == '0.05**':
+		if not self.sequencepair_object.get_broadflag():
 			os.remove(self.subsample_assembly)
 			os.remove(self.subsample_index)
 
@@ -492,6 +478,8 @@ class ScanAtypical:
 
 		##
 		## CCG matches between #2/#3, potential peak skew
+		##TODO lmao this is fucking horrible
+		##TODO refactor this please
 		if sorted_info[1][1]['EstimatedCCG'] == sorted_info[2][1]['EstimatedCCG']:
 			##
 			## check #2 and #3 vs CAG(#1)
@@ -563,14 +551,19 @@ class ScanAtypical:
 							break
 						else:
 							differential = max(sub_diff, alpha_diff)/min(sub_diff, alpha_diff)
-							if differential >= 3:
+							if not (primary_allele['Status'] == val[1].get('Status')) and differential > 5:
 								secondary_allele = sorted_info[1][1]
 								secondary_allele['Reference'] = sorted_info[1][0]
 								break
 							else:
-								secondary_allele = sorted_info[2][1]
-								secondary_allele['Reference'] = sorted_info[2][0]
-								break
+								if np.isclose([differential], [1.5], atol=0.25):
+									secondary_allele = sorted_info[1][1]
+									secondary_allele['Reference'] = sorted_info[1][0]
+									break
+								else:
+									secondary_allele = sorted_info[2][1]
+									secondary_allele['Reference'] = sorted_info[2][0]
+									break
 					elif top2_top3_dist >= 2:
 						if not top1_top3_dist == 1:
 							secondary_allele = sorted_info[2][1]
@@ -589,9 +582,12 @@ class ScanAtypical:
 		else:
 			if sorted_info[0][1]['EstimatedCCG'] == sorted_info[1][1]['EstimatedCCG']:
 				if np.isclose([sorted_info[0][1]['EstimatedCAG']], [sorted_info[1][1]['EstimatedCAG']],atol=1):
-					if sorted_info[0][1]['EstimatedCCG'] != sorted_info[2][1]['EstimatedCCG']:
-						secondary_allele = sorted_info[2][1]
-						secondary_allele['Reference'] = sorted_info[2][0]
+					if alpha_drop > 0.75:
+						secondary_allele = primary_allele.copy()
+					else:
+						if sorted_info[0][1]['EstimatedCCG'] != sorted_info[2][1]['EstimatedCCG']:
+							secondary_allele = sorted_info[2][1]
+							secondary_allele['Reference'] = sorted_info[2][0]
 				else:
 					secondary_allele = sorted_info[1][1]
 					secondary_allele['Reference'] = sorted_info[1][0]
@@ -623,8 +619,7 @@ class ScanAtypical:
 
 		##
 		## Check for atypical allele rewriting CCG Het to CCG Hom
-		temp_zyg = []
-		temp_curr = []
+		temp_zyg = []; temp_curr = []
 		for allele in [primary_allele, secondary_allele]:
 			orig_ccg = allele['OriginalReference'].split('_')[3]
 			curr_ccg = allele['EstimatedCCG']
@@ -649,7 +644,15 @@ class ScanAtypical:
 		##
 		## Check before typical intervening for 'new' atypicals
 		## Set up data structure
+		## Check for rotations of known structures...
 		intervening = input_reference['InterveningSequence']
+		for real in ['CAACAG','CCGCCA','CAACAGCAACAGCCGCCA','CAACAGCCGCCACCGCCA']:
+			if self.rotation_check(real, intervening):
+				intervening = real
+				input_reference['InterveningSequence'] = real
+
+		##
+		## Dictionary constructs to be filled by the following manual checks
 		int_one = {'Mask': 'CAACAG', 'Count': 0, 'StartIDX': 0, 'EndIDX': 0, 'Label': '', 'Suffix': ''}
 		int_two = {'Mask': 'CCGCCA', 'Count': 0, 'StartIDX': 0, 'EndIDX': 0, 'Label': '', 'Suffix': ''}
 
@@ -661,8 +664,6 @@ class ScanAtypical:
 		intervening_flag = True; atypical_flag = True; int_one_offset_flag = False
 		int_two_offset_flag = False; int_one_investigate = False; int_two_investigate = False
 		caacag_count = int_one['Count']; ccgcca_count = int_two['Count']
-		if caacag_count == 0 and ccgcca_count == 0: intervening_flag = False
-		if caacag_count != 1 and ccgcca_count != 1: atypical_flag = True
 		int_one_offset = 0; int_one_simscore = 0; int_two_simscore = 0
 
 		##########################
@@ -678,7 +679,7 @@ class ScanAtypical:
 			remainder = len(intervening) % 6
 			if not remainder == 0:
 				offset_mutated = intervening.split(intervening[remainder:remainder + 6])[0]
-				int_one_offse4t = len(offset_mutated)
+				int_one_offset = len(offset_mutated)
 				potential_mask = intervening[remainder:remainder + 6]
 				int_one_offset_simscore = self.similar('CAACAG', potential_mask)
 				int_one_offset_flag = True
@@ -693,6 +694,15 @@ class ScanAtypical:
 						int_one['Mask'] = intervening[0:6]
 						self.scraper(int_one, intervening)
 						int_one_investigate = True
+				elif len(intervening) == 6:
+					for sub_mask in ['CAA','CAG']:
+						remainder = ''
+						if sub_mask in intervening:
+							remainder = intervening.replace(sub_mask, '')
+						if self.rotation_check(remainder, sub_mask):
+							int_one['Count'] = 1
+							int_one['EndIDX'] = 6
+							caacag_count = 1
 
 		##########################
 		##CCGCCA (int two) check##
@@ -723,6 +733,22 @@ class ScanAtypical:
 					int_two['Mask'] = intervening[6:12]
 					self.scraper(int_two, intervening)
 					int_two_investigate = True
+			elif len(intervening) == 6:
+				for sub_mask in ['CCG','CCA']:
+					remainder = ''
+					if sub_mask in intervening:
+						remainder = intervening.replace(sub_mask, '')
+					if self.rotation_check(remainder, sub_mask):
+						int_two['Count'] = 1
+						int_two['StartIDX'] = int_one['EndIDX'] + 6
+						int_two['EndIDX'] = int_two['StartIDX'] + 6
+						ccgcca_count = 1
+
+		##################
+		## Header check ##
+		##################
+		if caacag_count == 0 and ccgcca_count == 0: intervening_flag = False
+		if caacag_count != 1 and ccgcca_count != 1: atypical_flag = True
 
 		#################################
 		##Anything longer than typical?##
@@ -759,6 +785,8 @@ class ScanAtypical:
 		if int_two_investigate:
 			int_two['Suffix'] = '*'
 			self.sequencepair_object.set_novel_atypical_structure(True)
+
+
 		int_one['Label'] = '{}'.format(str(int_one['Count']) + int_one['Suffix'])
 		int_two['Label'] = '{}'.format(str(int_two['Count']) + int_two['Suffix'])
 		genotype_label = '{}_{}_{}_{}_{}'.format(input_reference['EstimatedCAG'], int_one['Label'], int_two['Label'],

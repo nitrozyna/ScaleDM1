@@ -122,11 +122,17 @@ class SeqAlign:
 			elif 100000 > awk_output > 50000: self.subsample_flag = 0.4
 			elif 50000 > awk_output > 25000: self.subsample_flag = 0.6
 
-		forward_reads = self.subsample_input(self.sequencepair_object.get_fwreads(), 'R1')
-		reverse_reads = self.subsample_input(self.sequencepair_object.get_rvreads(), 'R2')
-		self.sequencepair_object.set_fwreads(forward_reads)
-		self.sequencepair_object.set_rvreads(reverse_reads)
+		if self.broad_flag:
+			forward_reads = self.sequencepair_object.get_fwreads()
+			reverse_reads = self.sequencepair_object.get_rvreads()
+			self.sequencepair_object.set_fwreads(forward_reads)
+			self.sequencepair_object.set_rvreads(reverse_reads)
 
+		elif awk_output > 50000:
+			forward_reads = self.subsample_input(self.sequencepair_object.get_fwreads(),'R1')
+			reverse_reads = self.subsample_input(self.sequencepair_object.get_rvreads(), 'R2')
+			self.sequencepair_object.set_fwreads(forward_reads)
+			self.sequencepair_object.set_rvreads(reverse_reads)
 		##
 		## Align the two FastQ files in the pair
 		## TODO??

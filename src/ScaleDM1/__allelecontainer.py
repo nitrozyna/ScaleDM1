@@ -9,13 +9,15 @@ class SequenceSample:
 		self.sample_alignpath = ''
 		self.sample_predictpath = ''
 		self.sample_bayespath = ''
-		self.purge_flag = False
+		self.enshrine_flag = False
 		self.subsample_flag = False
-		self.boost_flag = False
+		self.broad_flag = False
 		self.group_flag = False
 		self.total_seqreads = 0
 		self.fwalnpcnt = 0.0
 		self.rvalnpcnt = 0.0
+		self.fwalncount = 0
+		self.rvalncount = 0
 
 		self.forward_index = ''
 		self.reverse_index = ''
@@ -34,14 +36,17 @@ class SequenceSample:
 		self.primary_allele = None
 		self.secondary_allele = None
 
+		self.exception_raised = ''
 		self.atypical_count = 0
 		self.recall_count = 0
 		self.homozygous_haplotype = False
 		self.neighbouringpeaks = False
 		self.diminishedpeaks = False
 		self.ccguncertainty = False
+		self.cctuncertainty = False
 		self.svm_failure = False
 		self.alignmentwarning = False
+		self.atypical_alignmentwarning = False
 		self.atypical_ccgrewrite = False
 		self.atypical_zygrewrite = False
 		self.peakinspection_warning = False
@@ -50,6 +55,8 @@ class SequenceSample:
 		self.automatic_DSPsubsample = False
 		self.distribution_readcount_warning = False
 		self.novel_atypical_structure = False
+		self.original_fqcount = 0
+		self.subsampled_fqcount = 0
 
 	##
 	## Setters
@@ -59,13 +66,15 @@ class SequenceSample:
 	def set_alignpath(self, alignpath):	self.sample_alignpath = alignpath
 	def set_predictpath(self, predictpath):	self.sample_predictpath = predictpath
 	def set_bayespath(self, bayespath):	self.sample_bayespath = bayespath
-	def set_purgeflag(self, flag): self.purge_flag = flag
+	def set_enshrineflag(self, flag): self.enshrine_flag = flag
 	def set_subsampleflag(self, flag): self.subsample_flag = flag
-	def set_boostflag(self, flag): self.boost_flag = flag
+	def set_broadflag(self, flag): self.broad_flag = flag
 	def set_groupflag(self, flag): self.group_flag = flag
 	def set_totalseqreads(self, count): self.total_seqreads = count
 	def set_fwalnpcnt(self, pcnt): self.fwalnpcnt = pcnt
 	def set_rvalnpcnt(self, pcnt): self.rvalnpcnt = pcnt
+	def set_fwalncount(self, count): self.fwalncount = count
+	def set_rvalncount(self, count): self.rvalncount = count
 
 	def set_fwidx(self, idx): self.forward_index = idx
 	def set_rvidx(self, idx): self.reverse_index = idx
@@ -84,14 +93,17 @@ class SequenceSample:
 	def set_primary_allele(self, alleleobj): self.primary_allele = alleleobj
 	def set_secondary_allele(self, alleleobj): self.secondary_allele = alleleobj
 
+	def set_exceptionraised(self, stage_string): self.exception_raised = stage_string
 	def set_atypical_count(self, count): self.atypical_count = count
 	def set_recallcount(self, count): self.recall_count = count
 	def set_homozygoushaplotype(self, state): self.homozygous_haplotype = state
 	def set_neighbouringpeaks(self, state): self.neighbouringpeaks = state
 	def set_diminishedpeaks(self, state): self.diminishedpeaks = state
 	def set_ccguncertainty(self, state): self.ccguncertainty = state
+	def set_cctuncertainty(self, state): self.cctuncertainty = state
 	def set_svm_failure(self, state): self.svm_failure = state
 	def set_alignmentwarning(self, state): self.alignmentwarning = state
+	def set_atypical_alignmentwarning(self, state): self.atypical_alignmentwarning = state
 	def set_ccgzygstate(self, state): self.ccgzygstate = state
 	def set_atypical_ccgrewrite(self, state): self.atypical_ccgrewrite = state
 	def set_atypical_zygrewrite(self, state): self.atypical_zygrewrite = state
@@ -100,6 +112,8 @@ class SequenceSample:
 	def set_automatic_DSPsubsample(self, state): self.automatic_DSPsubsample = state
 	def set_distribution_readcount_warning(self, state): self.distribution_readcount_warning = state
 	def set_novel_atypical_structure(self, state): self.novel_atypical_structure = state
+	def set_original_fqcount(self, count): self.original_fqcount = count
+	def set_subsampled_fqcount(self, count): self.subsampled_fqcount = count
 
 	##
 	## Getters
@@ -109,13 +123,15 @@ class SequenceSample:
 	def get_alignpath(self): return self.sample_alignpath
 	def get_predictpath(self): return self.sample_predictpath
 	def get_bayespath(self): return self.sample_bayespath
-	def get_purgeflag(self): return self.purge_flag
+	def get_enshrineflag(self): return self.enshrine_flag
 	def get_subsampleflag(self): return self.subsample_flag
-	def get_boostflag(self): return self.boost_flag
+	def get_broadflag(self): return self.broad_flag
 	def get_groupflag(self): return self.group_flag
 	def get_totalseqreads(self): return self.total_seqreads
 	def get_fwalnpcnt(self): return self.fwalnpcnt
 	def get_rvalnpcnt(self): return self.rvalnpcnt
+	def get_fwalncount(self): return self.fwalncount
+	def get_rvalncount(self): return self.rvalncount
 
 	def get_fwidx(self): return self.forward_index
 	def get_rvidx(self): return self.reverse_index
@@ -134,13 +150,16 @@ class SequenceSample:
 	def get_primaryallele(self): return self.primary_allele
 	def get_secondaryallele(self): return self.secondary_allele
 
+	def get_exceptionraised(self): return self.exception_raised
 	def get_atypicalcount(self): return self.atypical_count
 	def get_recallcount(self): return self.recall_count
 	def get_homozygoushaplotype(self): return self.homozygous_haplotype
 	def get_neighbouringpeaks(self): return self.neighbouringpeaks
 	def get_diminishedpeaks(self): return self.diminishedpeaks
 	def get_ccguncertainty(self): return self.ccguncertainty
+	def get_cctuncertainty(self): return self.cctuncertainty
 	def get_alignmentwarning(self): return self.alignmentwarning
+	def get_atypical_alignmentwarning(self): return self.atypical_alignmentwarning
 	def get_ccgzygstate(self): return self.ccgzygstate
 	def get_svm_failure(self): return self.svm_failure
 	def get_atypical_ccgrewrite(self): return self.atypical_ccgrewrite
@@ -150,6 +169,8 @@ class SequenceSample:
 	def get_automatic_DSPsubsample(self): return self.automatic_DSPsubsample
 	def get_distribution_readcount_warning(self): return self.distribution_readcount_warning
 	def get_novel_atypical_structure(self): return self.novel_atypical_structure
+	def get_original_fqcount(self): return self.original_fqcount
+	def get_subsampled_fqcount(self): return self.subsampled_fqcount
 
 	##
 	## Functions
@@ -190,6 +211,8 @@ class IndividualAllele:
 		self.atypical_pcnt = 0.0
 		self.fwalnpcnt = 0.0
 		self.rvalnpcnt = 0.0
+		self.fwalncount = 0
+		self.rvalncount = 0
 
 		self.forward_index = ''
 		self.reverse_index = ''
@@ -224,7 +247,6 @@ class IndividualAllele:
 		self.fatalalignmentwarning = False
 		self.distribution_readcount_warning = False
 
-
 	##
 	## Setters
 	def set_header(self, header): self.header = header
@@ -253,6 +275,8 @@ class IndividualAllele:
 	def set_atypicalpcnt(self, pcnt): self.atypical_pcnt = pcnt
 	def set_fwalnpcnt(self, pcnt): self.fwalnpcnt = pcnt
 	def set_rvalnpcnt(self, pcnt): self.rvalnpcnt = pcnt
+	def set_fwalncount(self, count): self.fwalncount = count
+	def set_rvalncount(self, count): self.rvalncount = count
 
 	def set_fwidx(self, idx): self.forward_index = idx
 	def set_rvidx(self, idx): self.reverse_index = idx
@@ -315,6 +339,8 @@ class IndividualAllele:
 	def get_atypicalpcnt(self): return self.atypical_pcnt
 	def get_fwalnpcnt(self): return self.fwalnpcnt
 	def get_rvalnpcnt(self): return self.rvalnpcnt
+	def get_fwalncount(self): return self.fwalncount
+	def get_rvalncount(self): return self.rvalncount
 
 	def get_fwidx(self): return self.forward_index
 	def get_rvidx(self): return self.reverse_index
