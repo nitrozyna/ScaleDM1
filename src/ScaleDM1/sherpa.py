@@ -44,7 +44,8 @@ THREADS = cpu_count()
 class ScaleDM1:
 	def __init__(self):
 		"""
-		ScaleDM1: Automated triplet repeat genotyping for Myotonic Dystrophy type 1. ScaleDM1 has two modes of usage; sequence and batch:
+		ScaleDM1: Automated triplet repeat genotyping for Myotonic Dystrophy type 1.
+		ScaleDM1 has two modes of usage; sequence and batch:
 		Sequence mode consists of a pipeline behaviour for genome sequence QC, alignment and genotyping
 		Batch mode consists of a linear behaviour only for genotyping (from pre-aligned files)
 		If you want a full explanation of the ways in which ScaleDM1 can be run; scaledm1 --help
