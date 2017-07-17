@@ -42,17 +42,14 @@ class AlleleGenotyping:
 
 		##
 		## Constructs that will be updated with each allele process
-		self.classifier, self.encoder = self.build_zygosity_model()
 		self.allele_flags = {}; self.forward_distribution = None; self.reverse_distribution = None
-		self.forward_aggregate = None; self.reverse_aggregate = None
 		self.expected_zygstate = None; self.zygosity_state = None
 		self.pass_vld = True; self.ccg_sum = []
 
 		##
 		## Genotype!
 		if not self.allele_validation(): raise Exception('Allele(s) failed validation. Cannot genotype..')
-		if not self.determine_ccg(): raise Exception('CCG Genotyping failure. Cannot genotype..')
-		if not self.determine_cag(): raise Exception('CAG Genotyping failure. Cannot genotype..')
+		if not self.determine_ccg(): raise Exception('CtG Genotyping failure. Cannot genotype..')
 		if not self.genotype_validation(): raise Exception('Genotype failed validation. Cannot genotype..')
 		if not self.inspect_peaks():
 			log.warn('{}{}{}{}'.format(clr.red, 'sdm1__ ', clr.end, '1+ allele(s) failed peak validation. Precision not guaranteed.'))
@@ -61,76 +58,6 @@ class AlleleGenotyping:
 		self.render_graphs()
 		self.calculate_score()
 		self.set_report()
-
-	def build_zygosity_model(self):
-		"""
-		Function to build a SVM (wrapped into OvO class) for determining CCG zygosity
-		:return: svm object wrapped into OvO, class-label hash-encoder object
-		"""
-
-		##
-		## Classifier object and relevant parameters for our CCG prediction
-		svc_object = svm.LinearSVC(C=1.0, loss='ovr', penalty='l2', dual=False,
-								   tol=1e-4, multi_class='crammer_singer', fit_intercept=True,
-								   intercept_scaling=1, verbose=0, random_state=0, max_iter=-1)
-
-		##
-		## Take raw training data (CCG zygosity data) into DataLoader model object
-		traindat_ccg_collapsed = self.training_data['CollapsedCCGZygosity']
-		traindat_descriptionfi = self.training_data['GenericDescriptor']
-		traindat_model = DataLoader(traindat_ccg_collapsed, traindat_descriptionfi).load_model()
-
-		##
-		## Model data fitting to SVM
-		X = preprocessing.normalize(traindat_model.DATA)
-		Y = traindat_model.TARGET
-		ovo_svc = OutputCodeClassifier(svc_object, code_size=2, random_state=0).fit(X, Y)
-		encoder = traindat_model.ENCDR
-
-		##
-		## Return the fitted OvO(SVM) and Encoder
-		return ovo_svc, encoder
-
-	def predict_zygstate(self):
-		"""
-		Function which takes the newly collapsed CCG distribution and executes SVM prediction
-		to determine the zygosity state of this sample's CCG value(s). Data is reshaped
-		and normalised to ensure more reliable results. A check is executed between the results of
-		forward and reverse zygosity; if a match, great; if not, not explicitly bad but inform user.
-		:return: zygosity[2:-2] (trimming unrequired characters)
-		"""
-
-		##
-		## Reshape the input distribution so SKL doesn't complain about 1D vectors
-		## Normalise data in addition; cast to float64 for this to be permitted
-		forward_reshape = preprocessing.normalize(np.float64(self.forward_aggregate.reshape(1, -1)))
-		reverse_reshape = preprocessing.normalize(np.float64(self.reverse_aggregate.reshape(1, -1)))
-
-		##
-		## Predict the zygstate of these reshapen, noramlised 20D CCG arrays using SVM object earlier
-		## Results from self.classifier are #encoded; so convert with our self.encoder.inverse_transform
-		forward_zygstate = str(self.encoder.inverse_transform(self.classifier.predict(forward_reshape)))
-		reverse_zygstate = str(self.encoder.inverse_transform(self.classifier.predict(reverse_reshape)))
-
-		##
-		## We only particularly care about the reverse zygosity (CCG reads are higher quality in reverse data)
-		## However, for a QoL metric, compare fw/rv results. If match, good! If not, who cares!
-		if not forward_zygstate == reverse_zygstate:
-			self.allele_flags['CCGZygDisconnect'] = True
-		else:
-			self.allele_flags['CCGZyg_disconnect'] = False
-		return reverse_zygstate[2:-2]
-
-	def index_inspector(self, index_inspection_count):
-
-		major = max(self.reverse_aggregate)
-		majoridx = np.where(self.reverse_aggregate == major)[0][0]
-		minor = max(n for n in self.reverse_aggregate if n != major)
-		minoridx = np.where(self.reverse_aggregate == minor)[0][0]
-		if index_inspection_count == 2:
-			return [(major, majoridx), (minor, minoridx)]
-		if index_inspection_count == 1:
-			return [(major, majoridx)]
 
 	@staticmethod
 	def scrape_distro(distributionfi):
@@ -153,38 +80,13 @@ class AlleleGenotyping:
 		unlabelled_distro = np.array(placeholder_array)
 		return unlabelled_distro
 
-	@staticmethod
-	def distribution_collapse(distribution_array):
-		"""
-		Function to take a full 200x20 array (struc: CAG1-200,CCG1 -- CAG1-200CCG2 -- etc CCG20)
-		and aggregate all CAG values for each CCG
-		:param distribution_array: input dist (should be (1-200,1-20))
-		:return: 1x20D np(array)
-		"""
-
-		##
-		## Hopefully the user has aligned to the right reference dimensions
-		try:
-			ccg_arrays = np.split(distribution_array, 20)
-		except ValueError:
-			raise Exception('Input reads individisible by 20. Utilised incorrect reference style.')
-
-		##
-		## Aggregate each CCG
-		ccg_counter = 1
-		collapsed_array = []
-		for ccg_array in ccg_arrays:
-			collapsed_array.append(np.sum(ccg_array))
-			ccg_counter += 1
-
-		return np.asarray(collapsed_array)
 
 	@staticmethod
 	def pad_distribution(distribution_array, allele_object):
 
 		local_index = np.where(distribution_array == max(distribution_array))[0][0]
 		local_rightpad = len(distribution_array) - local_index
-		global_index = allele_object.get_ccg() - 1
+		global_index = allele_object.get_ctg() - 1
 		left_buffer = abs(local_index - global_index)
 		right_buffer = abs(20 - global_index) - local_rightpad
 		left_pad = np.asarray([0] * left_buffer)
@@ -269,7 +171,7 @@ class AlleleGenotyping:
 		peak_indexes = peakutils.indexes(distro, thres=utilised_threshold, min_dist=peak_dist)
 		fixed_indexes = np.array(peak_indexes + 1)
 		if not len(fixed_indexes) == error_boundary:
-			if triplet_stage == 'CAGHom' and (est_dist==1 or est_dist==0):
+			if triplet_stage == 'CTGHom' and (est_dist==1 or est_dist==0):
 				##todo make sure this doesnt fuck shit up
 				pass
 			elif allele_object.get_cag() in fixed_indexes:
@@ -323,94 +225,6 @@ class AlleleGenotyping:
 				allele_object.set_rvassembly(self.sequencepair_object.get_rvassembly())
 				allele_object.set_fwdist(self.sequencepair_object.get_fwdist())
 				allele_object.set_rvdist(self.sequencepair_object.get_rvdist())
-
-			###############################
-			## Stage one -- CCG Zygosity ##
-			###############################
-			## Typical allele
-			if allele_object.get_allelestatus() == 'Typical':
-				self.forward_aggregate = self.distribution_collapse(self.forward_distribution)
-				self.reverse_aggregate = self.distribution_collapse(self.reverse_distribution)
-
-			## Atypical allele
-			if allele_object.get_allelestatus() == 'Atypical':
-				## Data has been realigned to custom reference
-				if not self.invalid_data:
-					self.forward_aggregate = self.distribution_collapse(self.forward_distribution)
-					self.reverse_aggregate = self.reverse_distribution
-					allele_object.set_rvarray(self.reverse_aggregate)
-				## Data has not been realigned -- brute force genotyping
-				if self.invalid_data:
-					self.forward_aggregate = self.distribution_collapse(self.forward_distribution)
-					self.reverse_aggregate = self.distribution_collapse(self.reverse_distribution)
-			self.zygosity_state = self.predict_zygstate()
-
-			##
-			## Allele read peak (dsp error)
-			major = max(self.reverse_aggregate)
-			minor = max(n for n in self.reverse_aggregate if n != major)
-			for item in [major, minor]:
-				if item == 0 or item is None:
-					raise ValueError('Insignificant read count. Cannot genotype.')
-			tertiary = max(n for n in self.reverse_aggregate if n!= major and n!= minor)
-			majidx = int(np.where(self.reverse_aggregate == major)[0][0])
-			minidx = int(np.where(self.reverse_aggregate == minor)[0][0])
-
-			## check if minor is n-1/n+1 AND third peak is np.close(minor)
-			## skip the following block if so
-			skip_flag = False
-			if abs(majidx-minidx) == 1:
-				if np.isclose([minor], [tertiary], atol=minor*0.80):
-					skip_flag = True
-					self.sequencepair_object.set_ccguncertainty(True)
-			if minor == self.reverse_aggregate[allele_object.get_ccg()-1]:
-				skip_flag = True
-				self.sequencepair_object.set_ccguncertainty(True)
-			if not skip_flag:
-				for fod_peak in [majidx+1, minidx+1]:
-					if allele_object.get_ccg() not in [majidx+1, minidx]:
-						if fod_peak not in [self.sequencepair_object.get_primaryallele().get_ccg(),
-											self.sequencepair_object.get_secondaryallele().get_ccg()]:
-							allele_object.set_fodoverwrite(True)
-							allele_object.set_ccgval(int(fod_peak))
-
-			##
-			## Check SVM didn't fail...
-			if 1 < abs(majidx-minidx) < 10:
-				peak_count = 0
-				for peak in [majidx, minidx]:
-					pmo = self.reverse_aggregate[peak-1]; ppo = self.reverse_aggregate[peak+1]
-					pmo_ratio = pmo/self.reverse_aggregate[peak]
-					ppo_ratio = ppo/self.reverse_aggregate[peak]
-					if pmo_ratio and ppo_ratio < 0.2:
-						if 0.0 not in [pmo_ratio, ppo_ratio]:
-							peak_count += 1
-				if peak_count == 2 and not self.zygosity_state == 'HETERO':
-					if self.zygosity_state == 'HOMO+' or self.zygosity_state == 'HOMO*':
-						self.sequencepair_object.set_svm_failure(False)
-						pass
-					else:
-						self.zygosity_state = 'HETERO'
-						self.sequencepair_object.set_svm_failure(True)
-
-
-			##
-			## Clean up distribution for erroneous peaks
-			## In the case of atypical alleles, unexpected peaks may exist in aggregates
-			if self.zygosity_state == 'HOMO' or self.zygosity_state == 'HOMO*':
-				for i in range(0, len(self.reverse_aggregate)):
-					if np.isclose([i], [allele_object.get_ccg() - 1], atol=2):
-						if np.isclose([self.reverse_aggregate[i]], [self.reverse_aggregate[allele_object.get_ccg() - 1]],
-									  atol=((self.reverse_aggregate[allele_object.get_ccg() - 1])/100) * 45):
-							removal = (self.reverse_aggregate[i]/100) * 57.5
-							if i != allele_object.get_ccg()-1:
-								self.reverse_aggregate[i] -= removal
-			else:
-				for i in range(0, len(self.reverse_aggregate)):
-					if i != allele_object.get_ccg()-1:
-						removal = (self.reverse_aggregate[i]/100) * 75
-						self.reverse_aggregate[i] -= removal
-			allele_object.set_rvarray(self.reverse_aggregate)
 
 			#################################
 			## Stage two -- CCG continuity ##
@@ -656,7 +470,7 @@ class AlleleGenotyping:
 		secondary_dsp_cag = secondary_allele.get_cag(); secondary_fod_cag = secondary_allele.get_fodcag()
 
 		##
-		## Double check fod peaks
+		## Double check forencode peaks
 		def dimension_checker(input_list):
 
 			fod = input_list[0]

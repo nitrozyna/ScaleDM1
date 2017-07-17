@@ -259,12 +259,11 @@ class ScaleDM1:
 				###############################################
 				## Stage three!! Scan for atypical alleles.. ##
 				###############################################
-				try:
-					self.atypical_scanning(current_seqpair)
-				except Exception, e:
-					self.append_report(current_seqpair)
-					log.info('{}{}{}{}{}: {}\n'.format(clr.red, 'sdm1__ ', clr.end, 'Atypical scanning failure on ', seqpair_lbl, str(e)))
-					continue
+				self.atypical_scanning(current_seqpair)
+				#except Exception, e:
+				#	self.append_report(current_seqpair)
+				#	log.info('{}{}{}{}{}: {}\n'.format(clr.red, 'sdm1__ ', clr.end, 'Atypical scanning failure on ', seqpair_lbl, str(e)))
+				#	continue
 
 				##########################################
 				## Stage four!! Process allele status.. ##

@@ -57,12 +57,12 @@ class ScanAtypical:
 		## Exception for (unexpected) EOF
 		try: self.scan_reference_reads()
 		except StopIteration: self.assembly_object.close()
-
+		print "Tusia"
 		##
 		## Turn results into objects
 		primary_object = IndividualAllele(); secondary_object = IndividualAllele()
 		primary_data, secondary_data = self.organise_atypicals()
-
+		print "Tusia1"
 		for allele_pair in [(primary_object, primary_data, 'PRI'), (secondary_object, secondary_data, 'SEC')]:
 			obj = allele_pair[0]; dat = allele_pair[1]
 			obj.set_header(allele_pair[2])
@@ -75,7 +75,8 @@ class ScanAtypical:
 			obj.set_fiveprime(dat.get('5PFlank'))
 			obj.set_ctgval(dat.get('EstimatedCTG'))
 			obj.set_threeprime(dat.get('3PFlank'))
-			obj.set_rewrittenctg(dat.get('RewrittenCTG'))
+			obj.set_rewritten
+			ctg(dat.get('RewrittenCTG'))
 			obj.set_unrewrittenctg(dat.get('UnrewrittenCTG'))
 		sequencepair_object.set_primary_allele(primary_object)
 		sequencepair_object.set_secondary_allele(secondary_object)
@@ -202,9 +203,19 @@ class ScanAtypical:
 									'TypicalPcnt': ref_typical,
 									'EstimatedCTG': est_ctg}
 
+			if typical_count:
+				reference_dictionary['Status'] = 'Typical'
+
+			##
+			## Append results to reference label
+			self.atypical_info[investigation[0]] = reference_dictionary
+
 		if not self.sequencepair_object.get_broadflag():
 			os.remove(self.subsample_assembly)
 			os.remove(self.subsample_index)
+
+
+
 
 	def get_repeat_tract(self, triplet_input, mask):
 
@@ -228,7 +239,7 @@ class ScanAtypical:
 							region_start = i
 				if current_tract[i][1] == 1.0:
 					region_end = i
-			except:
+			except IndexError:
 				pass
 
 		##
@@ -245,7 +256,7 @@ class ScanAtypical:
 				try:
 					for sub_check in [current_tract[j-1], current_tract[j+1], current_tract[j+2]]:
 						if sub_check[1] == 1.0: sub_score += 1
-				except:
+				except IndexError:
 					pass
 				if sub_score != 3: first_pass_range = [x for x in first_pass_range if x!=j]
 
@@ -286,10 +297,10 @@ class ScanAtypical:
 		secondary_allele = None
 
 		##
-		## CCG matches between #2/#3, potential peak skew
+		## CTG matches between #2/#3, potential peak skew
 		##TODO lmao this is fucking horrible
 		##TODO refactor this please
-		if sorted_info[1][1]['EstimatedCCG'] == sorted_info[2][1]['EstimatedCCG']:
+		if sorted_info[1][1]['EstimatedCTG'] == sorted_info[2][1]['EstimatedCTG']:
 			##
 			## check #2 and #3 vs CAG(#1)
 			for val in [sorted_info[1], sorted_info[2]]:
@@ -389,9 +400,12 @@ class ScanAtypical:
 		##
 		## For each of the alleles we've determined..
 		## Get intervening lengths, create accurate genotype string
-		new_genotype, ctg_count = self.create_genotype_label(allele)
-		allele['OriginalReference'] = allele['Reference']
-		allele['Reference'] = new_genotype
+		for allele in [primary_allele, secondary_allele]:
+			new_genotype, ctg_count = self.create_genotype_label(allele)
+			allele['OriginalReference'] = allele['Reference']
+			allele['Reference'] = new_genotype
+
+		return primary_allele, secondary_allele
 
 
 	def create_genotype_label(self, input_reference):
