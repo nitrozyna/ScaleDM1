@@ -401,18 +401,18 @@ class ScanAtypical:
 		## For each of the alleles we've determined..
 		## Get intervening lengths, create accurate genotype string
 		for allele in [primary_allele, secondary_allele]:
-			new_genotype, ctg_count = self.create_genotype_label(allele)
-			allele['OriginalReference'] = allele['Reference']
-			allele['Reference'] = new_genotype
+#			new_genotype, ctg_count = self.create_genotype_label(allele)
+#			allele['OriginalReference'] = allele['Reference']
+#			allele['Reference'] = new_genotype
 
 		return primary_allele, secondary_allele
 
 
-	def create_genotype_label(self, input_reference):
+#	def create_genotype_label(self, input_reference):
 
-		genotype_label = '{}_'.format(input_reference['EstimatedCTG'])
-
-		return genotype_label
+#		genotype_label = '{}_'.format(input_reference['EstimatedCTG'])
+#
+#		return genotype_label
 
 ##TODO WHAT IS THIS???
 	@staticmethod

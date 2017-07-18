@@ -259,7 +259,7 @@ class ScaleDM1:
 				###############################################
 				## Stage three!! Scan for atypical alleles.. ##
 				###############################################
-				self.atypical_scanning(current_seqpair)
+				#self.atypical_scanning(current_seqpair)
 				#except Exception, e:
 				#	self.append_report(current_seqpair)
 				#	log.info('{}{}{}{}{}: {}\n'.format(clr.red, 'sdm1__ ', clr.end, 'Atypical scanning failure on ', seqpair_lbl, str(e)))
@@ -268,34 +268,34 @@ class ScaleDM1:
 				##########################################
 				## Stage four!! Process allele status.. ##
 				##########################################
-				realign_flag = self.instance_params.config_dict['instance_flags']['@atypical_realignment']
-				invalid_data = False
-				for allele in [current_seqpair.get_primaryallele(), current_seqpair.get_secondaryallele()]:
-					if allele.get_allelestatus() == 'Atypical':
-						if realign_flag == 'True':
-							try:
-								self.sequence_realignment(current_seqpair, allele)
-							except Exception, e:
-								self.append_report(current_seqpair)
-								log.info('{}{}{}{}{}: {}'.format(clr.red,'sdm1__ ',clr.end,'Realignment failure on ',seqpair_lbl,str(e)))
-								continue
-						else:
-							log.info('{}{}{}{}'.format(clr.yellow,'sdm1__ ',clr.end,'Atypical realignment not selected. Brute-force genotyping on inaccurate data.'))
-							invalid_data = True
-							allele.set_fwdist(current_seqpair.get_fwdist())
-							allele.set_rvdist(current_seqpair.get_rvdist())
-							allele.set_fwassembly(current_seqpair.get_fwassembly())
-							allele.set_rvassembly(current_seqpair.get_rvassembly())
+				#realign_flag = self.instance_params.config_dict['instance_flags']['@atypical_realignment']
+				#invalid_data = False
+				#for allele in [current_seqpair.get_primaryallele(), current_seqpair.get_secondaryallele()]:
+					#if allele.get_allelestatus() == 'Atypical':
+					#	if realign_flag == 'True':
+					#		try:
+					#			self.sequence_realignment(current_seqpair, allele)
+					#		except Exception, e:
+					#			self.append_report(current_seqpair)
+					#			log.info('{}{}{}{}{}: {}'.format(clr.red,'sdm1__ ',clr.end,'Realignment failure on ',seqpair_lbl,str(e)))
+					#			continue
+					#	else:
+					#		log.info('{}{}{}{}'.format(clr.yellow,'sdm1__ ',clr.end,'Atypical realignment not selected. Brute-force genotyping on inaccurate data.'))
+					#		invalid_data = True
+					#		allele.set_fwdist(current_seqpair.get_fwdist())
+					#		allele.set_rvdist(current_seqpair.get_rvdist())
+					#		allele.set_fwassembly(current_seqpair.get_fwassembly())
+					#		allele.set_rvassembly(current_seqpair.get_rvassembly())
 
-					if allele.get_allelestatus() == 'Typical':
-						allele.set_fwdist(current_seqpair.get_fwdist())
-						allele.set_rvdist(current_seqpair.get_rvdist())
-						allele.set_fwassembly(current_seqpair.get_fwassembly())
-						allele.set_rvassembly(current_seqpair.get_rvassembly())
+					#if allele.get_allelestatus() == 'Typical':
+					#	allele.set_fwdist(current_seqpair.get_fwdist())
+					#	allele.set_rvdist(current_seqpair.get_rvdist())
+					#	allele.set_fwassembly(current_seqpair.get_fwassembly())
+					#	allele.set_rvassembly(current_seqpair.get_rvassembly())
 
 				## tidy up seq files
-				for seqfi in [current_seqpair.get_fwreads(), current_seqpair.get_rvreads()]:
-					os.remove(seqfi)
+				#for seqfi in [current_seqpair.get_fwreads(), current_seqpair.get_rvreads()]:
+				#	os.remove(seqfi)
 
 				###########################################
 				## Stage five!! Genotype distributions.. ##
@@ -349,18 +349,18 @@ class ScaleDM1:
 			gc.collect()
 			log.info('{}{}{}{}'.format(clr.green,'sdm1__ ',clr.end,'Sequence alignment workflow complete!'))
 
-	def atypical_scanning(self, sequencepair_object):
+	#def atypical_scanning(self, sequencepair_object):
 
-		alignment_flag = self.instance_params.config_dict['instance_flags']['@sequence_alignment']
-		if alignment_flag == 'True':
-			log.info('{}{}{}{}'.format(clr.bold, 'sdm1__ ', clr.end, 'Scanning for atypical alleles..'))
-			sequencepair_object.set_atypicalreport(align.ScanAtypical(sequencepair_object, self.instance_params).get_atypicalreport())
-			atypical_count = sequencepair_object.get_atypicalcount()
-			if atypical_count != 0:
-				log.info('{}{}{}{}{}{}'.format(clr.yellow, 'sdm1__ ', clr.end, 'Scanning complete! ',str(sequencepair_object.get_atypicalcount()),' atypical allele(s) present.'))
-			else:
-				log.info('{}{}{}{}'.format(clr.green, 'sdm1__ ', clr.end,'Scanning complete! No atypical alleles present.'))
-			gc.collect()
+	#	alignment_flag = self.instance_params.config_dict['instance_flags']['@sequence_alignment']
+	#	if alignment_flag == 'True':
+	#		log.info('{}{}{}{}'.format(clr.bold, 'sdm1__ ', clr.end, 'Scanning for atypical alleles..'))
+	#		sequencepair_object.set_atypicalreport(align.ScanAtypical(sequencepair_object, self.instance_params).get_atypicalreport())
+	#		atypical_count = sequencepair_object.get_atypicalcount()
+	#		if atypical_count != 0:
+	#			log.info('{}{}{}{}{}{}'.format(clr.yellow, 'sdm1__ ', clr.end, 'Scanning complete! ',str(sequencepair_object.get_atypicalcount()),' atypical allele(s) present.'))
+	#		else:
+	#			log.info('{}{}{}{}'.format(clr.green, 'sdm1__ ', clr.end,'Scanning complete! No atypical alleles present.'))
+	#		gc.collect()
 
 	def sequence_realignment(self, sequencepair_object, individual_allele):
 

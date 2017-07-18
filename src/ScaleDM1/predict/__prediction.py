@@ -96,39 +96,6 @@ class AlleleGenotyping:
 
 		return right_aug
 
-	@staticmethod
-	def split_cag_target(input_distribution):
-		"""
-		Function to gather the relevant CAG distribution for the specified CCG value
-		We gather this information from the forward distribution of this sample pair as CCG reads are
-		of higher quality in the forward sequencing direction.
-		We split the entire fw_dist into contigs/bins for each CCG (4000 -> 200*20)
-		:param input_distribution: input forward distribution (4000d)
-		:param ccg_target: target value we want to select the 200 values for
-		:return: the sliced CAG distribution for our specified CCG value
-		"""
-
-		cag_split = [input_distribution[i:i + 200] for i in xrange(0, len(input_distribution), 200)]
-		distribution_dict = {}
-		for i in range(0, len(cag_split)):
-			distribution_dict['CCG' + str(i + 1)] = cag_split[i]
-
-		# current_target_distribution = distribution_dict['CCG' + str(ccg_target)]
-		return distribution_dict
-
-	def close_check(self, allele, array, x, y, z, state=None):
-		inner_pass = True
-		if np.isclose(array, x, atol=y):
-			if state == 'minus':
-				allele.set_nminuswarninglevel(z)
-				if z >= 5: inner_pass = False
-			if state == 'plus':
-				allele.set_npluswarninglevel(z)
-				if z >= 5: inner_pass = False
-		else:
-			allele.set_nminuswarninglevel(0)
-			allele.set_npluswarninglevel(0)
-		self.pass_vld = inner_pass
 
 	def peak_detection(self, allele_object, distro, peak_dist, triplet_stage, est_dist=None, fod_recall=False):
 
@@ -158,7 +125,7 @@ class AlleleGenotyping:
 		if triplet_stage == 'CAGHet':
 			allele_object.set_cagthreshold(utilised_threshold)
 			if not self.zygosity_state == 'HOMO*': error_boundary = 1
-			else: error_boundary = 2
+			else: error_boundary = 2u
 		if triplet_stage == 'CAGHom':
 			allele_object.set_cagthreshold(utilised_threshold)
 			error_boundary = 2
@@ -227,35 +194,24 @@ class AlleleGenotyping:
 				allele_object.set_rvdist(self.sequencepair_object.get_rvdist())
 
 			#################################
-			## Stage two -- CCG continuity ##
+			## Stage two -- CTG continuity ##
 			#################################
 			index_inspection_count = 0
 			if self.zygosity_state == 'HETERO': index_inspection_count = 2
 			if self.zygosity_state == 'HOMO': index_inspection_count = 1
 			inspections = self.index_inspector(index_inspection_count)
 			for inspect in inspections:
-				if np.isclose(allele_object.get_ccg(), [inspect[1]+1], atol=1):
+				if np.isclose(allele_object.get_ctg(), [inspect[1]+1], atol=1):
 					allele_object.set_validation(True)
-			ccg_expectant.append(allele_object.get_ccg())
+			ctg_expectant.append(allele_object.get_ctg())
 
 		try:
-			if not ccg_expectant[0] == ccg_expectant[1]:
+			if not ctg_expectant[0] == ctg_expectant[1]:
 				self.expected_zygstate = 'HETERO'
-			if ccg_expectant[0] == ccg_expectant[1]:
+			if ctg_expectant[0] == ctg_expectant[1]:
 				self.expected_zygstate = 'HOMO'
 		except IndexError:
-			raise Exception('CCG Prediction Failure.')
-
-		##
-		## If atypical detected, but zygosity was rewritten
-		## allele CCG remained the same, but one allele is now atypical
-		if not self.sequencepair_object.get_atypical_ccgrewrite():
-			if self.sequencepair_object.get_atypical_zygrewrite():
-				self.zygosity_state = 'HOMO+'
-		## allele CCG value was changed as a result of the atypical detection
-		else:
-			if self.sequencepair_object.get_atypical_zygrewrite():
-				self.zygosity_state = 'HOMO*'
+			raise Exception('CTG Prediction Failure.')
 
 		##
 		## Check both alleles passed validation
@@ -265,35 +221,35 @@ class AlleleGenotyping:
 		else:
 			return False
 
-	def determine_ccg(self):
+	def determine_ctg(self):
 
 		##
 		## Constructs
-		ccg_matches = 0; ccg_values = []; local_zygstate = None; pass_gtp = True; ccg_sum = []
+		ctg_matches = 0; ctg_values = []; local_zygstate = None; pass_gtp = True; ctg_sum = []
 
 		##
 		## For the two allele objects in this sample_pair
-		## First, ensure CCG matches between DSP estimate and FOD derision
+		## First, ensure CTG matches between DSP estimate and FOD derision
 		for allele in [self.sequencepair_object.get_primaryallele(), self.sequencepair_object.get_secondaryallele()]:
-			allele.set_ccgthreshold(0.50)
+			allele.set_ctgthreshold(0.50)
 
-			fod_failstate, ccg_indexes = self.peak_detection(allele, allele.get_rvarray(), 1, 'CCG')
+			fod_failstate, ctg_indexes = self.peak_detection(allele, allele.get_rvarray(), 1, 'CTG')
 			while fod_failstate:
-				fod_failstate, ccg_indexes = self.peak_detection(allele, allele.get_rvarray(), 1, 'CCG', fod_recall=True)
+				fod_failstate, ctg_indexes = self.peak_detection(allele, allele.get_rvarray(), 1, 'CTG', fod_recall=True)
 
-			if ccg_indexes[0] == allele.get_ccg():
-				ccg_matches += 1
-				allele.set_ccgvalid(True)
-			ccg_values.append(ccg_indexes[0])
-			allele.set_fodccg(np.asarray(ccg_indexes[0]))
+			if ctg_indexes[0] == allele.get_ctg():
+				ctg_matches += 1
+				allele.set_ctgvalid(True)
+			ctg_values.append(ctg_indexes[0])
+			allele.set_fodctg(np.asarray(ctg_indexes[0]))
 
 			distribution_split = self.split_cag_target(allele.get_fwarray())
-			target_distro = distribution_split['CCG{}'.format(allele.get_ccg())]
-			ccg_sum.append([allele.get_ccg(), sum(target_distro)])
+			target_distro = distribution_split['CTG{}'.format(allele.get_ctg())]
+			ctg_sum.append([allele.get_ctg(), sum(target_distro)])
 
-		if ccg_values[0] == ccg_values[1]:
+		if ctg_values[0] == ctg_values[1]:
 			local_zygstate = 'HOMO'
-		if not ccg_values[0] == ccg_values[1]:
+		if not ctg_values[0] == ctg_values[1]:
 			local_zygstate = 'HETERO'
 
 		##
@@ -303,13 +259,13 @@ class AlleleGenotyping:
 			if sum(self.reverse_aggregate) < 100:
 				self.zygosity_state = self.expected_zygstate = local_zygstate
 
-		self.sequencepair_object.set_ccgzygstate(self.expected_zygstate)
+		self.sequencepair_object.set_ctgzygstate(self.expected_zygstate)
 		if not self.zygosity_state == 'HOMO*' or not self.zygosity_state == 'HOMO+':
 			if not local_zygstate == self.expected_zygstate:
-				if abs(ccg_sum[0][0]-ccg_sum[1][0]) == 1:
-					if not np.isclose([ccg_sum[0][1]],[ccg_sum[1][1]],atol=(0.70*max(ccg_sum)[1])):
+				if abs(ctg_sum[0][0]-ctg_sum[1][0]) == 1:
+					if not np.isclose([ctg_sum[0][1]],[ctg_sum[1][1]],atol=(0.70*max(ctg_sum)[1])):
 						pass_gtp = True
-						self.ccg_sum = ccg_sum
+						self.ctg_sum = ctg_sum
 						pass
 				else:
 					pass_gtp = False
@@ -345,45 +301,45 @@ class AlleleGenotyping:
 		if self.zygosity_state == 'HETERO' or self.zygosity_state == 'HOMO*' or self.zygosity_state == 'HOMO+':
 			for allele in [self.sequencepair_object.get_primaryallele(), self.sequencepair_object.get_secondaryallele()]:
 				distribution_split = self.split_cag_target(allele.get_fwarray())
-				target_distro = distribution_split['CCG{}'.format(allele.get_ccg())]
+				target_distro = distribution_split['CTG{}'.format(allele.get_ctg())]
 				if self.zygosity_state == 'HOMO+':
 					for i in range(0, len(target_distro)):
 						if i != allele.get_cag() - 1:
 							removal = (target_distro[i] / 100) * 85
 							target_distro[i] -= removal
-				allele.set_cagthreshold(0.50)
+				allele.set_ctgthreshold(0.50)
 				fod_failstate, cag_indexes = self.peak_detection(allele, target_distro, 1, 'CAGHet')
 				while fod_failstate:
 					fod_failstate, cag_indexes = self.peak_detection(allele, target_distro, 1, 'CAGHet', fod_recall=True)
 				allele.set_fodcag(cag_indexes)
 
 		########################
-		## Homozygous for CCG ##
+		## Homozygous for CTG ##
 		########################
 		if self.zygosity_state == 'HOMO':
 			##
-			## Double check CCG matches.. be paranoid
-			primary_ccg = self.sequencepair_object.get_primaryallele().get_ccg()
-			secondary_ccg = self.sequencepair_object.get_secondaryallele().get_ccg()
+			## Double check CTG matches.. be paranoid
+			primary_ctg = self.sequencepair_object.get_primaryallele().get_ctg()
+			secondary_ctg = self.sequencepair_object.get_secondaryallele().get_ctg()
 			try:
-				if not primary_ccg == secondary_ccg:
-					target = max(self.ccg_sum)[0]
-					self.sequencepair_object.get_primaryallele().set_ccgval(target)
-					self.sequencepair_object.get_secondaryallele().set_ccgval(target)
+				if not primary_ctg == secondary_ctg:
+					target = max(self.ctg_sum)[0]
+					self.sequencepair_object.get_primaryallele().set_ctgval(target)
+					self.sequencepair_object.get_secondaryallele().set_ctgval(target)
 			except ValueError:
 				max_array = [0, 0]
 				for allele in [self.sequencepair_object.get_primaryallele(), self.sequencepair_object.get_secondaryallele()]:
 					distro_split = self.split_cag_target(allele.get_fwarray())
-					total_reads = sum(distro_split['CCG{}'.format(allele.get_ccg())])
+					total_reads = sum(distro_split['CTG{}'.format(allele.get_ctg())])
 
 					if total_reads > max_array[1]:
 						max_array[1] = total_reads
-						max_array[0] = allele.get_ccg()
-				self.sequencepair_object.get_primaryallele().set_ccgval(max_array[0])
-				self.sequencepair_object.get_secondaryallele().set_ccgval(max_array[0])
+						max_array[0] = allele.get_ctg()
+				self.sequencepair_object.get_primaryallele().set_ctgval(max_array[0])
+				self.sequencepair_object.get_secondaryallele().set_ctgval(max_array[0])
 
 			##
-			## Get distance estimate between two peaks in our target CCG distribution
+			## Get distance estimate between two peaks in our target CTG distribution
 			## set threshold to use in peak calling algorithm
 			estimated_distance = abs(self.sequencepair_object.get_secondaryallele().get_cag() -
 									 self.sequencepair_object.get_primaryallele().get_cag())
@@ -393,10 +349,10 @@ class AlleleGenotyping:
 			else: distance_threshold = 1
 
 			##
-			## Process each allele, getting the specific CCG distribution
+			## Process each allele, getting the specific CTG distribution
 			for allele in [self.sequencepair_object.get_primaryallele(), self.sequencepair_object.get_secondaryallele()]:
 				distribution_split = self.split_cag_target(allele.get_fwarray())
-				target_distro = distribution_split['CCG{}'.format(allele.get_ccg())]
+				target_distro = distribution_split['CTG{}'.format(allele.get_ctg())]
 
 				allele.set_cagthreshold(0.50)
 				fod_failstate, cag_indexes = self.peak_detection(allele, target_distro, distance_threshold, 'CAGHom', est_dist=estimated_distance)
@@ -414,7 +370,7 @@ class AlleleGenotyping:
 		primary_allele = self.sequencepair_object.get_primaryallele()
 		secondary_allele = self.sequencepair_object.get_secondaryallele()
 		distribution_split = self.split_cag_target(primary_allele.get_fwarray())
-		ccg_zygstate = self.zygosity_state
+		ctg_zygstate = self.zygosity_state
 
 		##
 		## Subfunctions
@@ -429,9 +385,9 @@ class AlleleGenotyping:
 			##
 			## Ensure integrity
 			inner_pass = True
-			if not primary_dsp_ccg == int(primary_fod_ccg):
-				if read_comparison(primary_dsp_ccg, int(primary_fod_ccg)) == primary_fod_ccg:
-					self.sequencepair_object.get_primaryallele().set_fodccg(primary_dsp_ccg)
+			if not primary_dsp_ctg == int(primary_fod_ctg):
+				if read_comparison(primary_dsp_ctg, int(primary_fod_ctg)) == primary_fod_ctg:
+					self.sequencepair_object.get_primaryallele().set_fodctg(primary_dsp_ctg)
 					inner_pass = True
 				else:
 					inner_pass = False
@@ -443,9 +399,9 @@ class AlleleGenotyping:
 				else:
 					inner_pass = False
 
-			if not secondary_dsp_ccg == int(secondary_fod_ccg):
-				if read_comparison(secondary_dsp_ccg, int(secondary_fod_ccg)) == secondary_fod_ccg:
-					self.sequencepair_object.get_secondaryallele().set_fodccg(secondary_dsp_ccg)
+			if not secondary_dsp_ctg == int(secondary_fod_ctg):
+				if read_comparison(secondary_dsp_ctg, int(secondary_fod_ctg)) == secondary_fod_ctg:
+					self.sequencepair_object.get_secondaryallele().set_fodctg(secondary_dsp_ctg)
 					inner_pass = True
 				else:
 					inner_pass = False
@@ -461,12 +417,12 @@ class AlleleGenotyping:
 
 		##
 		## Primary Allele
-		primary_dsp_ccg = primary_allele.get_ccg(); primary_fod_ccg = primary_allele.get_fodccg()
+		primary_dsp_ctg = primary_allele.get_ctg(); primary_fod_ctg = primary_allele.get_fodctg()
 		primary_dsp_cag = primary_allele.get_cag(); primary_fod_cag = primary_allele.get_fodcag()
 
 		##
 		## Secondary Allele
-		secondary_dsp_ccg = secondary_allele.get_ccg(); secondary_fod_ccg = secondary_allele.get_fodccg()
+		secondary_dsp_ctg = secondary_allele.get_ctg(); secondary_fod_ctg = secondary_allele.get_fodctg()
 		secondary_dsp_cag = secondary_allele.get_cag(); secondary_fod_cag = secondary_allele.get_fodcag()
 
 		##
@@ -487,9 +443,9 @@ class AlleleGenotyping:
 
 		##
 		## Check for potential homozygous haplotype/neighbouring peak
-		if ccg_zygstate == 'HOMO' and np.isclose(primary_dsp_cag, secondary_dsp_cag, atol=1):
-			primary_target = distribution_split['CCG{}'.format(primary_allele.get_ccg())]
-			secondary_target = distribution_split['CCG{}'.format(secondary_allele.get_ccg())]
+		if ctg_zygstate == 'HOMO' and np.isclose(primary_dsp_cag, secondary_dsp_cag, atol=1):
+			primary_target = distribution_split['CTG{}'.format(primary_allele.get_ctg())]
+			secondary_target = distribution_split['CTG{}'.format(secondary_allele.get_ctg())]
 			primary_reads = primary_target[primary_allele.get_cag()-1]
 			secondary_reads = secondary_target[secondary_allele.get_cag()-1]
 			diff = abs(primary_reads-secondary_reads)
@@ -522,23 +478,23 @@ class AlleleGenotyping:
 		## Check for diminished peaks (incase DSP failure / read count is low)
 		## Primary read info
 		primary_dist = self.split_cag_target(primary_allele.get_fwarray())
-		primary_target = primary_dist['CCG{}'.format(primary_allele.get_ccg())]
+		primary_target = primary_dist['CTG{}'.format(primary_allele.get_ctg())]
 		primary_reads = primary_target[primary_allele.get_cag() - 1]
 		primary_total = sum(primary_target)
 		## Secondary read info
 		secondary_dist = self.split_cag_target(secondary_allele.get_fwarray())
-		secondary_target = secondary_dist['CCG{}'.format(secondary_allele.get_ccg())]
+		secondary_target = secondary_dist['CTG{}'.format(secondary_allele.get_ctg())]
 		secondary_reads = secondary_target[secondary_allele.get_cag() - 1]
 		secondary_total = sum(secondary_target)
 		## Set specifics for zygstate
 		peak_total = sum([primary_reads, secondary_reads]); dist_total = 0
-		if ccg_zygstate == 'HOMO':
+		if ctg_zygstate == 'HOMO':
 			dist_total = sum([primary_total])
-		if ccg_zygstate == 'HOMO*' or ccg_zygstate == 'HOMO+':
+		if ctg_zygstate == 'HOMO*' or ctg_zygstate == 'HOMO+':
 			dist_total = sum([primary_total, secondary_total])
 		if not peak_total/dist_total >= 0.65:
-			if primary_fod_ccg == secondary_fod_ccg and primary_dsp_cag != secondary_dsp_cag:
-				primary_target = distribution_split['CCG{}'.format(primary_allele.get_ccg())]
+			if primary_fod_ctg == secondary_fod_ctg and primary_dsp_cag != secondary_dsp_cag:
+				primary_target = distribution_split['CTG{}'.format(primary_allele.get_ctg())]
 				split_target = primary_target[primary_allele.get_cag()+5:-1]
 				difference_buffer = len(primary_target)-len(split_target)
 				fod_failstate, cag_diminished = self.peak_detection(primary_allele, split_target, 1, 'CAGDim')
@@ -557,10 +513,10 @@ class AlleleGenotyping:
 
 		##
 		## Double check zygosity..
-		if not (primary_fod_ccg == secondary_fod_ccg) and (ccg_zygstate == 'HOMO' or ccg_zygstate == 'HOMO*' or ccg_zygstate == 'HOMO+'):
-			raise Exception('CCG validity check failure')
-		if (primary_fod_ccg == secondary_fod_ccg) and ccg_zygstate == 'HETERO':
-			raise Exception('CCG validity check failure')
+		if not (primary_fod_ctg == secondary_fod_ctg) and (ctg_zygstate == 'HOMO' or ctg_zygstate == 'HOMO*' or ccg_zygstate == 'HOMO+'):
+			raise Exception('CTG validity check failure')
+		if (primary_fod_ctg == secondary_fod_ctg) and ctg_zygstate == 'HETERO':
+			raise Exception('CTG validity check failure')
 
 		return pass_vld
 
@@ -569,7 +525,7 @@ class AlleleGenotyping:
 		for allele in [self.sequencepair_object.get_primaryallele(), self.sequencepair_object.get_secondaryallele()]:
 
 			distribution_split = self.split_cag_target(allele.get_fwarray())
-			target = distribution_split['CCG{}'.format(allele.get_ccg())]
+			target = distribution_split['CTG{}'.format(allele.get_ctg())]
 			linspace = np.linspace(0,199,200)
 
 			allele.set_peakreads(target[allele.get_fodcag()-1])
@@ -706,8 +662,8 @@ class AlleleGenotyping:
 
 		##
 		## Data for graph rendering (prevents frequent calls/messy code [[lol]])
-		pri_fodccg = self.sequencepair_object.get_primaryallele().get_fodccg()-1
-		sec_fodccg = self.sequencepair_object.get_secondaryallele().get_fodccg()-1
+		pri_fodctg = self.sequencepair_object.get_primaryallele().get_fodctg()-1
+		sec_fodctg = self.sequencepair_object.get_secondaryallele().get_fodctg()-1
 		pri_fodcag = self.sequencepair_object.get_primaryallele().get_fodcag()-1
 		sec_fodcag = self.sequencepair_object.get_secondaryallele().get_fodcag()-1
 		pri_rvarray = self.sequencepair_object.get_primaryallele().get_rvarray()
@@ -733,7 +689,7 @@ class AlleleGenotyping:
 			plt.savefig(os.path.join(predict_path, file_handle), format='pdf')
 			plt.close()
 
-		def pagemerge_subfunction(graph_list, prediction_path, ccg_val, header=None, hplus=False):
+		def pagemerge_subfunction(graph_list, prediction_path, cc=tg_val, header=None, hplus=False):
 
 			##
 			## Readers and pages
@@ -767,11 +723,11 @@ class AlleleGenotyping:
 		sample_pdf_path = os.path.join(predpath, '{}{}'.format(self.sequencepair_object.get_label(),'.pdf'))
 		c = canvas.Canvas(sample_pdf_path, pagesize=(720,432))
 		header_string = '{}{}'.format('Sample header: ', self.sequencepair_object.get_label())
-		primary_string = '{}(CAG{}, CCG{}) ({}; {})'.format('Primary: ', self.sequencepair_object.get_primaryallele().get_fodcag(),
+		primary_string = '{}(CAG{}, CTG{}) ({}; {})'.format('Primary: ', self.sequencepair_object.get_primaryallele().get_fodcag(),
 												 self.sequencepair_object.get_primaryallele().get_fodccg(),
 												 self.sequencepair_object.get_primaryallele().get_allelestatus(),
 												 self.sequencepair_object.get_primaryallele().get_allelegenotype())
-		secondary_string = '{}(CAG{}, CCG{}) ({}; {})'.format('Secondary: ', self.sequencepair_object.get_secondaryallele().get_fodcag(),
+		secondary_string = '{}(CAG{}, CCTG{}) ({}; {})'.format('Secondary: ', self.sequencepair_object.get_secondaryallele().get_fodcag(),
 												   self.sequencepair_object.get_secondaryallele().get_fodccg(),
 												   self.sequencepair_object.get_secondaryallele().get_allelestatus(),
 												   self.sequencepair_object.get_secondaryallele().get_allelegenotype())
@@ -803,8 +759,8 @@ class AlleleGenotyping:
 		c.save()
 
 		###############################################
-		## CCG heterozygous example					 ##
-		## i.e. CCG two peaks, one CAG dist per peak ##
+		## CTG heterozygous example					 ##
+		## i.e. CCTG two peaks, one CAG dist per peak ##
 		###############################################
 		if self.zygosity_state == 'HETERO' or self.zygosity_state == 'HOMO*' or self.zygosity_state == 'HOMO+':
 
