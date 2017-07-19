@@ -300,12 +300,12 @@ class ScaleDM1:
 				###########################################
 				## Stage five!! Genotype distributions.. ##
 				###########################################
-				try:
-					self.allele_genotyping(current_seqpair, invalid_data)
-				except Exception, e:
-					self.append_report(current_seqpair)
-					log.info('{}{}{}{}{}: {}\n'.format(clr.red, 'sdm1__ ', clr.end, 'Genotyping failure on ',seqpair_lbl, str(e)))
-					continue
+				#try:
+				self.allele_genotyping(current_seqpair)
+				#except Exception, e:
+				#	self.append_report(current_seqpair)
+				#	log.info('{}{}{}{}{}: {}\n'.format(clr.red, 'sdm1__ ', clr.end, 'Genotyping failure on ',seqpair_lbl, str(e)))
+				#	continue
 
 				#######################################
 				## Stage six!! Bayesian Genotyping.. ##
@@ -387,14 +387,14 @@ class ScaleDM1:
 
 		log.info('{}{}{}{}'.format(clr.green,'sdm1__ ',clr.end,'Allele re-alignment complete!'))
 
-	def allele_genotyping(self, sequencepair_object, invalid_data):
+	def allele_genotyping(self, sequencepair_object):
 
 		genotyping_flag = self.instance_params.config_dict['instance_flags']['@genotype_prediction']
 		if genotyping_flag == 'True':
-			log.info('{}{}{}{}'.format(clr.yellow,'sdm1__ ',clr.end,'Genotyping alleles.. '))
-			sequencepair_object.set_genotypereport(predict.AlleleGenotyping(sequencepair_object, self.instance_params, self.training_data, atypical_logic=invalid_data).get_report())
+			log.info('{}{}{}'.format(clr.yellow,'sdm1__ ',clr.end,'Genotyping alleles.. '))
+			sequencepair_object.set_genotypereport(predict.AlleleGenotyping(sequencepair_object, self.instance_params, self.training_data).get_report())
 			gc.collect()
-			log.info('{}{}{}{}'.format(clr.green,'sdm1__ ',clr.end,'Genotyping workflow complete!'))
+			log.info('{}{}{}'.format(clr.green,'sdm1__ ',clr.end,'Genotyping workflow complete!'))
 
 	def bayesian_analyses(self, sequencepair_object):
 
