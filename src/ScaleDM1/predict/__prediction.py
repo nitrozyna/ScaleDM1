@@ -73,8 +73,8 @@ class AlleleGenotyping:
 								   intercept_scaling=1, verbose=0, random_state=0, max_iter=-1)
 
 		##
-		## Take raw training data (CTG zygosity data) into DataLoader model object
-		traindat_ctg_collapsed = self.training_data['CollapsedCTGZygosity']
+		## Take raw training data (CCG zygosity data) into DataLoader model object
+		traindat_ctg_collapsed = self.training_data['CollapsedCCGZygosity']
 		traindat_descriptionfi = self.training_data['GenericDescriptor']
 		traindat_model = DataLoader(traindat_ctg_collapsed, traindat_descriptionfi).load_model()
 
