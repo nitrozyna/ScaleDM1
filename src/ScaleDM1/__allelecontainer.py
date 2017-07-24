@@ -30,7 +30,7 @@ class SequenceSample:
 
 		self.trim_report = []
 		self.align_report = []
-		self.atypical_report = ''
+		self.report = ''
 		self.genotype_report = ''
 
 		self.primary_allele = None
@@ -87,7 +87,7 @@ class SequenceSample:
 
 	def set_trimreport(self, report): self.trim_report = report
 	def set_alignreport(self, report): self.align_report = report
-	def set_atypicalreport(self, report): self.atypical_report = report
+	def set_atypicalreport(self, report): self.report = report
 	def set_genotypereport(self, report): self.genotype_report = report
 
 	def set_primary_allele(self, alleleobj): self.primary_allele = alleleobj
@@ -144,7 +144,7 @@ class SequenceSample:
 
 	def get_trimreport(self): return self.trim_report
 	def get_alignreport(self): return self.align_report
-	def get_atypicalreport(self): return self.atypical_report
+	def get_report(self): return self.report
 	def get_genotypereport(self): return self.genotype_report
 
 	def get_primaryallele(self): return self.primary_allele
