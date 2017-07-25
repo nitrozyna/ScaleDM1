@@ -259,11 +259,12 @@ class ScaleDM1:
 				###############################################
 				## Stage three!! Scan for atypical alleles.. ##
 				###############################################
-				#self.atypical_scanning(current_seqpair)
-				#except Exception, e:
-				#	self.append_report(current_seqpair)
-				#	log.info('{}{}{}{}{}: {}\n'.format(clr.red, 'sdm1__ ', clr.end, 'Atypical scanning failure on ', seqpair_lbl, str(e)))
-				#	continue
+				try:
+					self.atypical_scanning(current_seqpair)
+				except Exception, e:
+					self.append_report(current_seqpair)
+					log.info('{}{}{}{}{}: {}\n'.format(clr.red, 'sdm1__ ', clr.end, 'Atypical scanning failure on ', seqpair_lbl, str(e)))
+					continue
 
 				##########################################
 				## Stage four!! Process allele status.. ##
@@ -300,7 +301,7 @@ class ScaleDM1:
 				###########################################
 				## Stage five!! Genotype distributions.. ##
 				###########################################
-				#try:
+
 				self.allele_genotyping(current_seqpair)
 				#except Exception, e:
 				#	self.append_report(current_seqpair)
@@ -349,18 +350,18 @@ class ScaleDM1:
 			gc.collect()
 			log.info('{}{}{}{}'.format(clr.green,'sdm1__ ',clr.end,'Sequence alignment workflow complete!'))
 
-	#def atypical_scanning(self, sequencepair_object):
+	def atypical_scanning(self, sequencepair_object):
 
-	#	alignment_flag = self.instance_params.config_dict['instance_flags']['@sequence_alignment']
-	#	if alignment_flag == 'True':
-	#		log.info('{}{}{}{}'.format(clr.bold, 'sdm1__ ', clr.end, 'Scanning for atypical alleles..'))
-	#		sequencepair_object.set_atypicalreport(align.ScanAtypical(sequencepair_object, self.instance_params).get_atypicalreport())
-	#		atypical_count = sequencepair_object.get_atypicalcount()
-	#		if atypical_count != 0:
-	#			log.info('{}{}{}{}{}{}'.format(clr.yellow, 'sdm1__ ', clr.end, 'Scanning complete! ',str(sequencepair_object.get_atypicalcount()),' atypical allele(s) present.'))
-	#		else:
-	#			log.info('{}{}{}{}'.format(clr.green, 'sdm1__ ', clr.end,'Scanning complete! No atypical alleles present.'))
-	#		gc.collect()
+		alignment_flag = self.instance_params.config_dict['instance_flags']['@sequence_alignment']
+		if alignment_flag == 'True':
+			log.info('{}{}{}{}'.format(clr.bold, 'sdm1__ ', clr.end, 'Scanning for atypical alleles..'))
+			sequencepair_object.set_atypicalreport(align.ScanAtypical(sequencepair_object, self.instance_params))#.get_atypicalreport())
+			atypical_count = sequencepair_object.get_atypicalcount()
+			if atypical_count != 0:
+				log.info('{}{}{}{}{}{}'.format(clr.yellow, 'sdm1__ ', clr.end, 'Scanning complete! ',str(sequencepair_object.get_atypicalcount()),' atypical allele(s) present.'))
+			else:
+				log.info('{}{}{}{}'.format(clr.green, 'sdm1__ ', clr.end,'Scanning complete! No atypical alleles present.'))
+			gc.collect()
 
 	def sequence_realignment(self, sequencepair_object, individual_allele):
 
@@ -392,7 +393,7 @@ class ScaleDM1:
 		genotyping_flag = self.instance_params.config_dict['instance_flags']['@genotype_prediction']
 		if genotyping_flag == 'True':
 			log.info('{}{}{}'.format(clr.yellow,'sdm1__ ',clr.end,'Genotyping alleles.. '))
-			sequencepair_object.set_genotypereport(predict.AlleleGenotyping(sequencepair_object, self.instance_params, self.training_data).get_report())
+			sequencepair_object.set_genotypereport(predict.AlleleGenotyping(sequencepair_object, self.instance_params).get_report())
 			gc.collect()
 			log.info('{}{}{}'.format(clr.green,'sdm1__ ',clr.end,'Genotyping workflow complete!'))
 

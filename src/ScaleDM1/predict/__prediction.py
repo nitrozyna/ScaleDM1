@@ -15,33 +15,27 @@ import matplotlib
 import numpy as np
 import logging as log
 matplotlib.use('Agg')
-from sklearn import svm
 import prettyplotlib as ppl
 import matplotlib.pyplot as plt
 from sklearn import preprocessing
 from reportlab.pdfgen import canvas
 from peakutils.plot import plot as pplot
-from sklearn.multiclass import OutputCodeClassifier
 
 ##
 ## Backend Junk
-from ..__backend import DataLoader
 from ..__backend import Colour as clr
 
 class AlleleGenotyping:
-	def __init__(self, sequencepair_object, instance_params, training_data):
+	def __init__(self, sequencepair_object, instance_params):
 
 		##
 		## Allele objects and instance data
 		self.sequencepair_object = sequencepair_object
 		self.instance_params = instance_params
-		self.training_data = training_data
 		self.allele_report = ''
 		self.warning_triggered = False
-
-		##
+		#
 		## Constructs that will be updated with each allele process
-		self.classifier, self.encoder = self.build_zygosity_model()
 		self.allele_flags = {}; self.forward_distribution = None; self.reverse_distribution = None
 		self.forward_aggregate = None; self.reverse_aggregate = None
 		self.expected_zygstate = None; self.zygosity_state = None
@@ -60,34 +54,6 @@ class AlleleGenotyping:
 		self.calculate_score()
 		self.set_report()
 
-	def build_zygosity_model(self):
-		"""
-		Function to build a SVM (wrapped into OvO class) for determining CTG zygosity
-		:return: svm object wrapped into OvO, class-label hash-encoder object
-		"""
-
-		##
-		## Classifier object and relevant parameters for our CCG prediction
-		svc_object = svm.LinearSVC(C=1.0, loss='ovr', penalty='l2', dual=False,
-								   tol=1e-4, multi_class='crammer_singer', fit_intercept=True,
-								   intercept_scaling=1, verbose=0, random_state=0, max_iter=-1)
-
-		##
-		## Take raw training data (CCG zygosity data) into DataLoader model object
-		traindat_ctg_collapsed = self.training_data['CollapsedCCGZygosity']
-		traindat_descriptionfi = self.training_data['GenericDescriptor']
-		traindat_model = DataLoader(traindat_ctg_collapsed, traindat_descriptionfi).load_model()
-
-		##
-		## Model data fitting to SVM
-		X = preprocessing.normalize(traindat_model.DATA)
-		Y = traindat_model.TARGET
-		ovo_svc = OutputCodeClassifier(svc_object, code_size=2, random_state=0).fit(X, Y)
-		encoder = traindat_model.ENCDR
-
-		##
-		## Return the fitted OvO(SVM) and Encoder
-		return ovo_svc, encoder
 
 	def predict_zygstate(self):
 		"""
@@ -104,20 +70,14 @@ class AlleleGenotyping:
 		forward_reshape = preprocessing.normalize(np.float64(self.forward_aggregate.reshape(1, -1)))
 		reverse_reshape = preprocessing.normalize(np.float64(self.reverse_aggregate.reshape(1, -1)))
 
-		##
-		## Predict the zygstate of these reshapen, noramlised 20D CCG arrays using SVM object earlier
-		## Results from self.classifier are #encoded; so convert with our self.encoder.inverse_transform
-		forward_zygstate = str(self.encoder.inverse_transform(self.classifier.predict(forward_reshape)))
-		reverse_zygstate = str(self.encoder.inverse_transform(self.classifier.predict(reverse_reshape)))
-
 
 		##
 		## We only particularly care about the forward zygosity (CTG reads are higher quality in forward data)
 		## However, for a QoL metric, compare fw/rv results. If match, good! If not, doesn't matter!
 		if not forward_zygstate == reverse_zygstate:
-			self.allele_flags['CCGZygDisconnect'] = True
+			self.allele_flags['CTGZygDisconnect'] = True
 		else:
-			self.allele_flags['CCGZyg_disconnect'] = False
+			self.allele_flags['CTGZyg_disconnect'] = False
 
 		return reverse_zygstate[2:-2]
 
@@ -142,18 +102,20 @@ class AlleleGenotyping:
 		:param distributionfi:
 		:return: np.array(data_from_csv_file)
 		"""
-
 		##
 		## Open CSV file with information within; append to temp list
 		## Scrape information, cast to np.array(), return
 		placeholder_array = []
+
 		with open(distributionfi) as dfi:
 			source = csv.reader(dfi, delimiter=',')
+			print source
 			next(source)  # skip header
 			for row in source:
 				placeholder_array.append(int(row[2]))
 			dfi.close()
 		unlabelled_distro = np.array(placeholder_array)
+		print unlabelled_distro
 		return unlabelled_distro
 
 
@@ -238,7 +200,7 @@ class AlleleGenotyping:
 				pass
 			elif allele_object.get_cag() in fixed_indexes:
 				fixed_indexes = np.asarray([x for x in fixed_indexes if x == allele_object.get_cag()])
-			elif triplet_stage == 'CCG':
+			elif triplet_stage == 'CTG':
 				if len(fixed_indexes) > 2 and not self.zygosity_state == 'HETERO':
 					fixed_indexes = [np.where(distro == max(distro))[0][0]+1]
 					if self.zygosity_state == 'HOMO+' or self.zygosity_state == 'HOMO*':
@@ -310,21 +272,20 @@ class AlleleGenotyping:
 			if abs(majidx - minidx) == 1:
 				if np.isclose([minor], [tertiary], atol=minor * 0.80):
 					skip_flag = True
-					self.sequencepair_object.set_ccguncertainty(True)
+					self.sequencepair_object.set_ctguncertainty(True)
 			if minor == self.reverse_aggregate[allele_object.get_ccg() - 1]:
 				skip_flag = True
-				self.sequencepair_object.set_ccguncertainty(True)
+				self.sequencepair_object.set_ctguncertainty(True)
 			## skip the following block if so
 			if not skip_flag:
 				if abs_ratio < 0.05:
 					pass
 				else:
 					for fod_peak in [majidx + 1, minidx + 1]:
-						if allele_object.get_ccg() not in [majidx + 1, minidx]:
-							if fod_peak not in [self.sequencepair_object.get_primaryallele().get_ccg(),
-												self.sequencepair_object.get_secondaryallele().get_ccg()]:
-								allele_object.set_fodoverwrite(True)
-								allele_object.set_ccgval(int(fod_peak))
+						if allele_object.get_ctg() not in [majidx + 1, minidx]:
+							if fod_peak not in [self.sequencepair_object.get_primaryallele().get_ctg(),
+												self.sequencepair_object.get_secondaryallele().get_ctg()]:
+								allele_object.set_ctgval(int(fod_peak))
 				##
 				## Check SVM didn't fail...
 				if 1 < abs(majidx - minidx) < 10:
@@ -563,13 +524,12 @@ class AlleleGenotyping:
 				difference_buffer = len(primary_target)-len(split_target)
 				fod_failstate, cag_diminished = self.peak_detection(primary_allele, split_target, 1, 'CAGDim')
 				if split_target[cag_diminished] > 100:
-					if not primary_allele.get_allelestatus()=='Atypical' and not secondary_allele.get_allelestatus()=='Atypical':
-						## bypass integrity checks
-						secondary_allele.set_cagval(int(cag_diminished+difference_buffer-1))
-						for peak in [primary_reads, secondary_reads]:
-							if peak < 750:
-								self.sequencepair_object.set_diminishedpeaks(True)
-						return pass_vld
+
+					secondary_allele.set_cagval(int(cag_diminished+difference_buffer-1))
+					for peak in [primary_reads, secondary_reads]:
+						if peak < 750:
+							self.sequencepair_object.set_diminishedpeaks(True)
+					return pass_vld
 
 		return pass_vld
 
@@ -675,12 +635,10 @@ class AlleleGenotyping:
 
 			##
 			## If we get here; alleles are valid
-			allele.set_ccgvalid(True)
+			allele.set_ctgvalid(True)
 			allele.set_cagvalid(True)
 			allele.set_genotypestatus(True)
 
-			novel_caacag = allele.get_reflabel().split('_')[1]; novel_ccgcca = allele.get_reflabel().split('_')[2]
-			allele.set_allelegenotype('{}_{}_{}'.format(novel_caacag,novel_ccgcca,allele.get_cct()))
 
 			##
 			## If failed, write intermediate data to report
@@ -692,7 +650,7 @@ class AlleleGenotyping:
 								 '{}: {}\n{}: {}\n{}: {}\n' \
 								 '{}: {}\n{}: {}\n'.format(
 								 '>> Peak Inspection Failure','Intermediate results log',
-								 'Investigating CCG', allele.get_ccg(),
+								 'Investigating CTG', allele.get_ctg(),
 								 'Interpolation warning', allele.get_interpolation_warning(),
 								 'Interpolation distance', allele.get_interpdistance(),
 								 'Reads (%) surrounding peak', allele.get_vicinityreads(),
@@ -713,7 +671,7 @@ class AlleleGenotyping:
 		## Data for graph rendering (prevents frequent calls/messy code [[lol]])
 		pri_fodctg = self.sequencepair_object.get_primaryallele().get_fodctg()-1
 		sec_fodctg = self.sequencepair_object.get_secondaryallele().get_fodctg()-1
-		pri_fodcag = self.sequencepair_object.get_primaryallele().get_fodcag()-1
+		pri_fodcag = self.sequencepair_object.get_primaryallele().get_fodctg()-1
 		sec_fodcag = self.sequencepair_object.get_secondaryallele().get_fodcag()-1
 		pri_rvarray = self.sequencepair_object.get_primaryallele().get_rvarray()
 		sec_rvarray = self.sequencepair_object.get_secondaryallele().get_rvarray()
@@ -755,8 +713,8 @@ class AlleleGenotyping:
 			## Write to one PDF
 			if hplus: suffix = 'AtypicalHomozyg'
 			else: suffix = ''
-			if not header: output_path = os.path.join(prediction_path, 'CCG{}CAGDetection_{}.pdf'.format(ccg_val, suffix))
-			else: output_path = os.path.join(prediction_path, 'IntroCCG.pdf')
+			if not header: output_path = os.path.join(prediction_path, 'CTG{}CAGDetection_{}.pdf'.format(ctg_val, suffix))
+			else: output_path = os.path.join(prediction_path, 'IntroCTG.pdf')
 			writer = PyPDF2.PdfFileWriter()
 			writer.addPage(translated_page)
 			with open(output_path, 'wb') as f:
@@ -772,13 +730,9 @@ class AlleleGenotyping:
 		sample_pdf_path = os.path.join(predpath, '{}{}'.format(self.sequencepair_object.get_label(),'.pdf'))
 		c = canvas.Canvas(sample_pdf_path, pagesize=(720,432))
 		header_string = '{}{}'.format('Sample header: ', self.sequencepair_object.get_label())
-		primary_string = '{}(CAG{}, CTG{}) ({}; {})'.format('Primary: ', self.sequencepair_object.get_primaryallele().get_fodcag(),
-												 self.sequencepair_object.get_primaryallele().get_fodccg(),
-												 self.sequencepair_object.get_primaryallele().get_allelestatus(),
+		primary_string = '{}(CTG{}) ({})'.format('Primary: ', self.sequencepair_object.get_primaryallele().get_fodctg(),
 												 self.sequencepair_object.get_primaryallele().get_allelegenotype())
-		secondary_string = '{}(CAG{}, CCTG{}) ({}; {})'.format('Secondary: ', self.sequencepair_object.get_secondaryallele().get_fodcag(),
-												   self.sequencepair_object.get_secondaryallele().get_fodccg(),
-												   self.sequencepair_object.get_secondaryallele().get_allelestatus(),
+		secondary_string = '{}(CTG{}) ({})'.format('Secondary: ', self.sequencepair_object.get_secondaryallele().get_fodctg(),
 												   self.sequencepair_object.get_secondaryallele().get_allelegenotype())
 
 		##########################################################
@@ -817,12 +771,12 @@ class AlleleGenotyping:
 			## Render CCG graph, append path to allele path list
 			## Merge intro_ccg card with sample CCG graph
 			## Append merged intro_ccg to heterozygous list
-			hetero_graphs = []; ccg_peaks = [int(pri_fodccg),int(sec_fodccg)]
+			hetero_graphs = []; ctg_peaks = [int(pri_fodctg),int(sec_fodctg)]
 			concat = np.asarray([a + b for a, b in zip(pri_rvarray,sec_rvarray)])
-			graph_subfunction([0, 21, 20], concat, ['CCG Value', 'Read Count'], ([1, 20, 1], [1, 20], range(1,21)),
-							  ccg_peaks, predpath, 'CCGDetection.pdf', graph_type='bar', neg_anchor=True)
-			intro_card = pagemerge_subfunction([sample_pdf_path, os.path.join(predpath, 'CCGDetection.pdf')],
-													predpath, ccg_val=0, header=True)
+			graph_subfunction([0, 21, 20], concat, ['CTG Value', 'Read Count'], ([1, 20, 1], [1, 20], range(1,21)),
+							  ctg_peaks, predpath, 'CTGDetection.pdf', graph_type='bar', neg_anchor=True)
+			intro_card = pagemerge_subfunction([sample_pdf_path, os.path.join(predpath, 'CTGDetection.pdf')],
+													predpath, ctg_val=0, header=True)
 			hetero_graphs.append(intro_card)
 			plt.close()
 
@@ -833,52 +787,49 @@ class AlleleGenotyping:
 				##
 				## Data for this allele (peak detection graph)
 				temp_graphs = []
-				target_distro = distribution_split['CCG{}'.format(allele.get_ccg())]
+				target_distro = distribution_split['CTG{}'.format(allele.get_ctg())]
 				if self.zygosity_state == 'HOMO+':
 					for i in range(0, len(target_distro)):
 						if i != allele.get_cag() - 1:
 							removal = (target_distro[i] / 100) * 75
 							target_distro[i] -= removal
-				if allele.get_rewrittenccg():
-					peak_filename = 'CCG{}-CAGDetection_atypical_ccgdiff.pdf'.format(allele.get_fodccg())
-					peak_prefix = '(CCG{}**) '.format(allele.get_fodccg())
-				elif allele.get_unrewrittenccg():
-					peak_filename = 'CCG{}-CAGDetection_atypical_ccgsame.pdf'.format(allele.get_fodccg())
-					peak_prefix = '(CCG{}++) '.format(allele.get_fodccg())
+				if allele.get_rewrittenctg():
+					peak_filename = 'CTGDetection.pdf'.format(allele.get_fodctg())
+					peak_prefix = '(CTG{}) '.format(allele.get_fodctg())
 				else:
-					peak_filename = 'CCG{}-CAGDetection.pdf'.format(allele.get_fodccg())
-					peak_prefix = '(CCG{}) '.format(allele.get_fodccg())
+					peak_filename = 'CTGDetection.pdf'.format(allele.get_fodctg())
+					peak_prefix = '(CTG{}) '.format(allele.get_fodctg())
 				peak_graph_path = os.path.join(predpath, peak_filename)
 				## Render the graph, append to list, close plot
-				graph_subfunction([0, 199, 200], target_distro, ['CAG Value', 'Read Count'],
+				graph_subfunction([0, 199, 200], target_distro, ['CTG Value', 'Read Count'],
 								  ([1, 200, 50], [1, 200], [0,50,100,150,200]), [np.int64(allele.get_fodcag() - 1)],
 								  predpath, peak_filename, prefix=peak_prefix)
 				temp_graphs.append(peak_graph_path); plt.close()
 
 				##
 				## Inspect the peak (subslice)
-				slice_range = range(allele.get_fodcag()-4, allele.get_fodcag()+7)
-				if allele.get_rewrittenccg():
-					slice_filename = 'CCG{}-Peak_atypical_ccgdiff.pdf'.format(allele.get_fodccg())
-					slice_prefix = '(CCG{}**) '.format(allele.get_ccg())
-				elif allele.get_unrewrittenccg():
-					slice_filename = 'CCG{}-Peak_atypical_ccgsame.pdf'.format(allele.get_fodccg())
-					slice_prefix = '(CCG{}++) '.format(allele.get_ccg())
+				slice_range = range(allele.get_fodctg()-4, allele.get_fodctg()+7)
+				if allele.get_rewrittenctg():
+					slice_filename = 'CTGDetection.pdf'.format(allele.get_fodctg())
+					slice_prefix = '(CTG{}) '.format(allele.get_ctg())
+				elif allele.get_unrewrittenctg():
+					slice_filename = 'CTGDetection.pdf'.format(allele.get_fodctg())
+					slice_prefix = '(CTG{}++) '.format(allele.get_ctg())
 				else:
-					slice_filename = 'CCG{}-Peak.pdf'.format(allele.get_fodccg())
-					slice_prefix = '(CCG{}) ' .format(allele.get_ccg())
+					slice_filename = 'CTG{}-Peak.pdf'.format(allele.get_fodctg())
+					slice_prefix = '(CTG{}) ' .format(allele.get_ctg())
 				sub = target_distro[np.int64(allele.get_fodcag()-6):np.int64(allele.get_fodcag()+5)]
 				## Render the graph, append to list, close plot
-				graph_subfunction([0,10,11], sub, ['CAG Value', 'Read Count'], ([1,11,1], [1,11], slice_range),
+				graph_subfunction([0,10,11], sub, ['CTG Value', 'Read Count'], ([1,11,1], [1,11], slice_range),
 								  [np.int64(allele.get_fodcag()-1)], predpath,slice_filename, prefix=slice_prefix, graph_type='bar')
 				temp_graphs.append(os.path.join(predpath,slice_filename)); plt.close()
 
 				##
 				## Merge 'allele sample' into one page
-				ccg_val = allele.get_fodccg()
-				if allele.get_unrewrittenccg(): hplus = True
+				ctg_val = allele.get_fodctg()
+				if allele.get_unrewrittenctg(): hplus = True
 				else: hplus = False
-				merged_graph = pagemerge_subfunction(temp_graphs, predpath, ccg_val, hplus=hplus)
+				merged_graph = pagemerge_subfunction(temp_graphs, predpath, ctg_val, hplus=hplus)
 				hetero_graphs.append(merged_graph)
 
 			self.sequencepair_object.get_primaryallele().set_allelegraphs(hetero_graphs)
@@ -894,12 +845,12 @@ class AlleleGenotyping:
 			##Data for homozygous graph(s)
 			homo_graphs = []
 			page_graphs = []
-			target_ccg = 'CCG{}'.format(self.sequencepair_object.get_primaryallele().get_ccg())
+			target_ctg = 'CTG{}'.format(self.sequencepair_object.get_primaryallele().get_ctg())
 			## Peak data
-			peak_filename = 'CCG{}-CAGDetection.pdf'.format(self.sequencepair_object.get_primaryallele().get_fodccg())
-			peak_prefix = '(CCG{}) '.format(self.sequencepair_object.get_primaryallele().get_ccg())
-			altpeak_filename = 'CCG{}-Peak.pdf'.format(self.sequencepair_object.get_primaryallele().get_fodccg())
-			ccg_peaks = [int(pri_fodccg),int(sec_fodccg)]; cag_peaks = [int(pri_fodcag),int(sec_fodcag)]
+			peak_filename = 'CTGDetection.pdf'.format(self.sequencepair_object.get_primaryallele().get_fodctg())
+			peak_prefix = '(CTG{}) '.format(self.sequencepair_object.get_primaryallele().get_ctg())
+			altpeak_filename = 'CTG{}-Peak.pdf'.format(self.sequencepair_object.get_primaryallele().get_fodctg())
+			ctg_peaks = [int(pri_fodctg),int(sec_fodctg)]; cag_peaks = [int(pri_fodcag),int(sec_fodcag)]
 			## Subslice data
 			pri_cag = self.sequencepair_object.get_primaryallele().get_cag()
 			sec_cag = self.sequencepair_object.get_secondaryallele().get_cag()
@@ -913,25 +864,25 @@ class AlleleGenotyping:
 			## Render the graph, append to list, close plot
 			## Merge intro_ccg card with sample CCG graph
 			## Append merged intro_ccg to homozygous list, append line/bar peak to page list
-			graph_subfunction([0, 21, 20], pri_rvarray, ['CCG Value', 'Read Count'], ([1, 20, 1], [1, 20], range(1,21)),
-							  ccg_peaks, predpath, 'CCGDetection.pdf', graph_type='bar', neg_anchor=True); plt.close()
-			graph_subfunction([0, 199, 200], target_distro, ['CAG Value', 'Read Count'],
+			graph_subfunction([0, 21, 20], pri_rvarray, ['CTG Value', 'Read Count'], ([1, 20, 1], [1, 20], range(1,21)),
+							  ctg_peaks, predpath, 'CTGDetection.pdf', graph_type='bar', neg_anchor=True); plt.close()
+			graph_subfunction([0, 199, 200], target_distro, ['CTG Value', 'Read Count'],
 							  ([1, 200, 50], [1, 200], [0,50,100,150,200]), cag_peaks, predpath,
 							  peak_filename, prefix=peak_prefix); plt.close()
-			graph_subfunction([0, len(sub)-1, len(sub)], sub, ['CAG Value', 'Read Count'],
+			graph_subfunction([0, len(sub)-1, len(sub)], sub, ['CTG Value', 'Read Count'],
 							  ([1, len(sub), 1], [1, len(sub)], slice_range), cag_peaks, predpath, altpeak_filename,
 							  prefix=peak_prefix, graph_type='bar'); plt.close()
-			intro_card = pagemerge_subfunction([sample_pdf_path, os.path.join(predpath, 'CCGDetection.pdf')],
-													predpath, ccg_val=0, header=True)
+			intro_card = pagemerge_subfunction([sample_pdf_path, os.path.join(predpath, 'CTGDetection.pdf')],
+													predpath, ctg_val=0, header=True)
 			homo_graphs.append(intro_card)
 			page_graphs.append(os.path.join(predpath, peak_filename))
 			page_graphs.append(os.path.join(predpath, altpeak_filename))
 
 			##
 			## Merge 'allele sample' into one page
-			ccg_val = self.sequencepair_object.get_primaryallele().get_fodccg()
-			merged_graph = pagemerge_subfunction(page_graphs, predpath, ccg_val)
-
+			ctg_val = self.sequencepair_object.get_primaryallele().get_fodctg()
+			merged_graph = pagemerge_subfunction(page_graphs, predpath, ctg_val)
+			# TODO no merging for TG required
 			## Combine CCG and CAG graphs
 			homo_graphs.append(merged_graph)
 			self.sequencepair_object.get_primaryallele().set_allelegraphs(homo_graphs)
@@ -1007,23 +958,6 @@ class AlleleGenotyping:
 				if self.sequencepair_object.get_diminishedpeaks():
 					allele_confidence -= 15; penfi.write('{}, {}\n'.format('Diminished Peaks','-15'))
 
-
-				##
-				## Allele based genotyping flags
-				## Allele typical/atypical structure
-				if allele.get_allelestatus() == 'Atypical':
-					allele_confidence -= 5; penfi.write('{}, {}\n'.format('Atypical Allele','-5'))
-					if np.isclose([float(allele.get_atypicalpcnt())],[50.00],atol=5.00):
-						allele_confidence -= 20; penfi.write('{}, {}\n'.format('Atypical reads (50%)','-20'))
-					if np.isclose([float(allele.get_atypicalpcnt())],[80.00],atol=20.00):
-						allele_confidence += 15; penfi.write('{}, {}\n'.format('Atypical reads (80%>)','+15'))
-				if allele.get_allelestatus() == 'Typical':
-					allele_confidence += 5; penfi.write('{}, {}\n'.format('Typical Allele', '+5'))
-					if np.isclose([float(allele.get_typicalpcnt())],[50.00],atol=5.00):
-						allele_confidence -= 20; penfi.write('{}, {}\n'.format('Typical reads (50%)','-20'))
-					if np.isclose([float(allele.get_typicalpcnt())],[80.00],atol=15.00):
-						allele_confidence += 15; penfi.write('{}, {}\n'.format('Typical reads (80%>)','+15'))
-
 				##
 				## Total reads in sample..
 				if allele.get_totalreads() > 10000:	allele_confidence += 10; penfi.write('{}, {}\n'.format('High total read count', '+10'))
@@ -1082,16 +1016,10 @@ class AlleleGenotyping:
 				##
 				## Warning penalty.. if triggered, no confidence
 				if self.warning_triggered: allele_confidence -= 20; penfi.write('{}, {}\n'.format('Peak Inspection warning triggered','-20'))
-				if self.sequencepair_object.get_ccguncertainty(): allele_confidence -= 10; penfi.write('{}, {}\n'.format('CCG Uncertainty','-10'))
+				if self.sequencepair_object.get_ctguncertainty(): allele_confidence -= 10; penfi.write('{}, {}\n'.format('CTG Uncertainty','-10'))
 				if self.sequencepair_object.get_alignmentwarning(): allele_confidence -= 15; penfi.write('{}, {}\n'.format('Low read count alignment warning','-15'))
 				if allele.get_fatalalignmentwarning(): allele_confidence -= 40; penfi.write('{}, {}\n'.format('Fatal low read count alignment warning','-40'))
 
-				##
-				## If reflabel CAG and FOD CAG differ.. no confidence
-				label_split = allele.get_reflabel().split('_')[0]
-				if allele.get_allelestatus() == 'Atypical':
-					if not np.isclose([int(allele.get_fodcag())],[int(label_split)],atol=1):
-						allele_confidence = 0; penfi.write('{}, {}\n'.format('Atypical DSP:FOD inconsistency','-100'))
 
 				##
 				## Determine score (max out at 100), return genotype
@@ -1106,20 +1034,18 @@ class AlleleGenotyping:
 
 			##
 			## Report path for this allele
-			allele_filestring = '{}{}{}'.format(allele.get_header(),allele.get_allelestatus(), '_AlleleReport.txt')
+			allele_filestring = '{}{}'.format(allele.get_header(), '_AlleleReport.txt')
 			report_path = os.path.join(self.sequencepair_object.get_predictpath(), allele_filestring)
 			allele.set_allelereport(report_path)
-			report_string = '{}{}\n\n{}\n{}{}\n{}{}\n{}{}\n{}{}\n{}{}\n{}{}\n{}{}\n\n' \
+			report_string = '{}{}\n\n{}\n{}{}\n{}{}\n{}{}\n{}{}\n\n{}{}\n{}{}\n\n' \
 							'{}\n{}{}\n{}{}\n{}{}\n{}{}\n{}{}\n{}{}\n{}{}\n{}{}\n{}{}\n{}{}\n{}{}\n{}{}\n\n' \
-							'{}\n{}{}\n{}{}\n{}{}\n{}{}\n{}{}'.format(
+							'{}\n{}{}\n{}{}\n{}{}'.format(
 							'Allele Report>> ', self.sequencepair_object.get_label(),
 							'Summary Information>>',
 							'Genotype: ', allele.get_allelegenotype(),
 							'Subsampling %: ', self.sequencepair_object.get_subsampleflag(),
 							'Confidence: ', allele.get_alleleconfidence(),
 							'CTG Uncertain: ', self.sequencepair_object.get_ctguncertainty(),
-							'Structure Status: ', allele.get_allelestatus(),
-							'Typical Pcnt: ', allele.get_typicalpcnt(),
 							'Total Reads: ', allele.get_totalreads(),
 							'Flags>>',
 							'Recall Count: ', self.sequencepair_object.get_recallcount(),

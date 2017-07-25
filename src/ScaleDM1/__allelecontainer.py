@@ -189,17 +189,8 @@ class IndividualAllele:
 		self.validation = False
 		self.allele_genotype = ''
 		self.allele_confidence = 0
-		self.five_prime = ''
-		self.cag_value = 0
-		self.caacag_value = 0
-		self.ccgcca_value = 0
-		self.intervening_sequence = ''
-		self.ccg_value = 0
-		self.rewritten_ccg = 0
-		self.unrewritten_ccg = 0
-		self.cct_value = 0
-		self.three_prime = ''
 
+		self.ctg_value = 0
 		self.allele_status = ''
 		self.reference_label = ''
 		self.original_reference = ''
@@ -254,7 +245,7 @@ class IndividualAllele:
 	def set_allelegenotype(self, genotype): self.allele_genotype = genotype
 	def set_alleleconfidence(self, confidence): self.allele_confidence = confidence
 	def set_fiveprime(self, fp): self.five_prime = fp
-	def set_cagval(self, cag): self.cag_value = cag
+	def set_ctgval(self, ctg): self.ctg_value = ctg
 	def set_caacagval(self, intv1): self.caacag_value = intv1
 	def set_ccgccaval(self, intv2): self.ccgcca_value = intv2
 	def set_intervening(self, intv): self.intervening_sequence = intv
@@ -293,7 +284,7 @@ class IndividualAllele:
 	def set_fodccg(self, array): self.fod_ccg = array
 	def set_fodcag(self, array): self.fod_cag = array
 	def set_ccgvalid(self, status): self.ccg_valid = status
-	def set_cagvalid(self, status): self.cag_valid = status
+	def set_ctgvalid(self, status): self.ctg_valid = status
 	def set_interpdistance(self,distance): self.interp_distance = distance
 	def set_vicinityreads(self, value): self.vicinity_reads = value
 	def set_immediate_dropoff(self, value_list): self.immediate_dropoff = value_list
@@ -318,7 +309,7 @@ class IndividualAllele:
 	def get_allelegenotype(self): return self.allele_genotype
 	def get_alleleconfidence(self): return self.allele_confidence
 	def get_fiveprime(self): return self.five_prime
-	def get_cag(self): return self.cag_value
+	def get_ctg(self): return self.ctg_value
 	def get_caacag(self): return self.caacag_value
 	def get_ccgcca(self): return self.ccgcca_value
 	def get_intervening(self): return self.intervening_sequence
@@ -328,7 +319,6 @@ class IndividualAllele:
 	def get_cct(self): return self.cct_value
 	def get_threeprime(self): return self.three_prime
 
-	def get_allelestatus(self): return self.allele_status
 	def get_reflabel(self): return self.reference_label
 	def get_originalreference(self): return self.original_reference
 	def get_totalreads(self): return self.total_reads
@@ -351,13 +341,13 @@ class IndividualAllele:
 	def get_fwarray(self): return self.forward_array
 	def get_rvarray(self): return self.reverse_array
 	def get_ccgthreshold(self): return self.ccg_peak_threshold
-	def get_cagthreshold(self): return self.cag_peak_threshold
+	def get_ctgthreshold(self): return self.ctg_peak_threshold
 
 	def get_genotypestatus(self): return self.genotype_status
 	def get_fodccg(self): return self.fod_ccg
-	def get_fodcag(self): return self.fod_cag
+	def get_fodctg(self): return self.fod_ctg
 	def get_ccgvalid(self): return self.ccg_valid
-	def get_cagvalid(self): return self.cag_valid
+	def get_ctgvalid(self): return self.ctg_valid
 	def get_interpdistance(self): return self.interp_distance
 	def get_vicinityreads(self): return self.vicinity_reads
 	def get_immediate_dropoff(self): return self.immediate_dropoff
