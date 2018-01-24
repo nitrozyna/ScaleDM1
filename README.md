@@ -11,12 +11,9 @@ quality control (trimming, demultiplexing) of raw reads, alignment, and then gen
 The general overview of the application (assuming use of all stages) is as follows:
 1) Input FastQ files are subsampled, if specified. Reads are then treated for quality (trimming, scoring), given the user's parameters.
 2) FastQC is carried out on the treated files, with reports available in a given sample's output folder.
-3) Alignment of these files, to a typical HD structure (CAG_1_1_CCG_2) reference, is carried out.
-4) Assemblies are scanned with Digital Signal Processing to detect any possible atypical structures (e.g. CAG_2_1_CCG_3).
-4.1) If no atypical alleles are detected, proceed as normal.
-4.2) If atypical alleles are detected, a custom tailored reference is generated, and re-alignment to this is carried out.
-5) With the appropriate allele information and sequence assembly(ies) present, samples are genotyped.
-6) Output is written for the current sample; the procedure is repeated for the next sample in the queue (if present).
+3) Alignment of these files, to a typical DM1 structure (CTG) reference, is carried out.
+4) With the appropriate allele information and sequence assembly(ies) present, samples are genotyped.
+5) Output is written for the current sample; the procedure is repeated for the next sample in the queue (if present).
 
 What's New
 ==========
